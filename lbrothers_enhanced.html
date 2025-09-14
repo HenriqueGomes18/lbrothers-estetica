@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>L' Brothers - Estética Automotiva Premium</title>
+    <meta name="description" content="Estética automotiva premium em São Paulo. Agendamento online, lavagem, polimento e detalhamento profissional.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        }
+        .service-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        .floating-label {
+            position: absolute;
+            pointer-events: none;
+            left: 12px;
+            top: 12px;
+            transition: 0.2s ease all;
+            color: #9ca3af;
+            font-size: 14px;
+        }
+        input:focus ~ .floating-label,
+        input:not(:placeholder-shown) ~ .floating-label,
+        textarea:focus ~ .floating-label,
+        textarea:not(:placeholder-shown) ~ .floating-label {
+            top: -8px;
+            left: 10px;
+            font-size: 12px;
+            background: white;
+            padding: 0 5px;
+            color: #3b82f6;
+        }
+        .input-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .calendar-day {
+            transition: all 0.2s;
+        }
+        .calendar-day:hover:not(.disabled) {
+            background-color: #3b82f6;
+            color: white;
+            cursor: pointer;
+        }
+        .calendar-day.selected {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .success-message {
+            background: #10b981;
+            color: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .error-message {
+            background: #ef4444;
+            color: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body class="font-sans bg-gray-100">
+    <header class="gradient-bg text-white shadow-lg">
+    <div class="container mx-auto px-4 py-6">
+        <div class="flex justify-between items-center">
+            <div class="flex items-center space-x-2 text-left focus:outline-none" 
+                 aria-label="Ir para a página inicial L' Brothers">
+                <i class="fas fa-car-side text-3xl text-blue-400" aria-hidden="true"></i>
+                <span class="text-2xl font-bold text-white">L' Brothers</span>
+            </div>
+    
+            <nav class="hidden md:flex space-x-8" role="navigation" aria-label="Menu principal">
+            <a href="#services" class="hover:text-blue-300 transition" aria-label="Ver nossos serviços">Serviços</a>
+            <a href="#about" class="hover:text-blue-300 transition" aria-label="Sobre nossa empresa">Sobre Nós</a>
+            <a href="#contact" class="hover:text-blue-300 transition" aria-label="Entre em contato">Contato</a>
+
+            <button onclick="openModal('loginModal')" class="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-full transition" aria-label="Acessar área do cliente">Área do Cliente</button>
+    
+            <button onclick="checkAccess()" class="bg-purple-500 hover:bg-purple-600 px-4 py-2 rounded-full transition" aria-label="Acessar painel administrativo">
+                Meu Controle
+            </button>
+            </nav>
+
+            <button class="md:hidden text-2xl" onclick="toggleMobileMenu()" aria-label="Abrir menu mobile" aria-expanded="false">
+                <i class="fas fa-bars" aria-hidden="true"></i>
+            </button>
+        </div>
+            
+        <!-- Mobile Menu -->
+        <div id="mobileMenu" class="hidden md:hidden mt-4 pb-4" role="navigation" aria-label="Menu mobile">
+            <div class="flex flex-col space-y-4">
+                <a href="#services" class="hover:text-blue-300 transition">Serviços</a>
+                <a href="#about" class="hover:text-blue-300 transition">Sobre Nós</a>
+                <a href="#contact" class="hover:text-blue-300 transition">Contato</a>
+                <button onclick="checkAccess()" class="bg-purple-500 hover:bg-purple-600 px-4 py-2 rounded-full transition w-full">Área do ADM</button> 
+                <button onclick="openModal('loginModal')" class="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-full transition w-full">Área do Cliente</button>
+            </div>
+        </div>
+    </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="gradient-bg text-white py-20" role="banner">
+        <div class="container mx-auto px-4 flex flex-col md:flex-row items-center">
+            <div class="md:w-1/2 mb-10 md:mb-0">
+                <h1 class="text-4xl md:text-5xl font-bold mb-6">Transforme seu veículo em uma obra de arte</h1>
+                <p class="text-xl mb-8 text-gray-300">Na L' Brothers, cuidamos do seu carro como se fosse nosso. Serviços premium de estética automotiva para deixar seu veículo impecável.</p>
+                <div class="flex space-x-4">
+                    <button onclick="openModal('loginModal')" class="bg-blue-500 hover:bg-blue-600 px-6 py-3 rounded-full font-medium transition">Agendar Serviço</button>
+                    <button onclick="openModal('servicesModal')" class="bg-transparent border-2 border-white hover:bg-white hover:text-gray-900 px-6 py-3 rounded-full font-medium transition">Nossos Serviços</button>
+                </div>
+            </div>
+            <div class="md:w-1/2 flex justify-center">
+                <img src="https://thumbs.dreamstime.com/b/fechamento-da-roda-do-carro-sendo-lavada-em-um-detalhador-autom%C3%A1tico-processo-detalhado-de-assist%C3%AAncia-captado-arm%C3%A1rio-309647328.jpg?w=992" 
+                     alt="Processo de lavagem profissional de veículo" 
+                     class="rounded-lg shadow-2xl max-w-full h-auto">
+            </div>
+        </div>
+    </section>
+
+    <!-- Services Section -->
+    <section id="services" class="py-16 bg-white">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-bold text-center mb-12">Nossos Serviços Premium</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Service 1 -->
+                <div class="service-card bg-white rounded-lg shadow-md overflow-hidden transition duration-300">
+                    <div class="h-48 overflow-hidden">
+                        <img src="https://images.unsplash.com/photo-1607860108855-64acf2078ed9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80" alt="Lavagem Premium profissional" class="w-full h-full object-cover">
+                    </div>
+                    <div class="p-6">
+                        <h3 class="text-xl font-semibold mb-2">Lavagem Premium</h3>
+                        <p class="text-gray-600 mb-4">Lavagem completa com produtos importados e acabamento perfeito para seu veículo.</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-blue-500 font-bold">A partir de R$ 120</span>
+                            <button onclick="scheduleService('lavagem-premium')" class="text-blue-500 hover:text-blue-700 font-medium">Agendar</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Service 2 -->
+                <div class="service-card bg-white rounded-lg shadow-md overflow-hidden transition duration-300">
+                    <div class="h-48 overflow-hidden">
+                        <img src="https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1528&q=80" alt="Polimento cristalizado profissional" class="w-full h-full object-cover">
+                    </div>
+                    <div class="p-6">
+                        <h3 class="text-xl font-semibold mb-2">Polimento Cristalizado</h3>
+                        <p class="text-gray-600 mb-4">Remoção de riscos e imperfeições, deixando a pintura como nova com proteção duradoura.</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-blue-500 font-bold">A partir de R$ 350</span>
+                            <button onclick="scheduleService('polimento-cristalizado')" class="text-blue-500 hover:text-blue-700 font-medium">Agendar</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Service 3 -->
+                <div class="service-card bg-white rounded-lg shadow-md overflow-hidden transition duration-300">
+                    <div class="h-48 overflow-hidden">
+                        <img src="https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80" alt="Detalhamento interno profissional" class="w-full h-full object-cover">
+                    </div>
+                    <div class="p-6">
+                        <h3 class="text-xl font-semibold mb-2">Detalhamento Interno</h3>
+                        <p class="text-gray-600 mb-4">Limpeza profunda do interior com higienização de estofados, painel e todos os componentes.</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-blue-500 font-bold">A partir de R$ 250</span>
+                            <button onclick="scheduleService('detalhamento-interno')" class="text-blue-500 hover:text-blue-700 font-medium">Agendar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-12">
+                <button onclick="openModal('servicesModal')" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-full font-medium transition">Ver Todos os Serviços</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about" class="py-16 bg-gray-100">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row items-center">
+                <div class="md:w-1/2 mb-10 md:mb-0 md:pr-10">
+                    <h2 class="text-3xl font-bold mb-6">Sobre a L' Brothers</h2>
+                    <p class="text-gray-700 mb-4">Fundada em 2020 por dois irmãos apaixonados por carros, a L' Brothers nasceu com o objetivo de oferecer serviços de estética automotiva com padrão de excelência.</p>
+                    <p class="text-gray-700 mb-4">Com profissionais altamente qualificados e equipamentos de última geração, garantimos resultados que superam as expectativas dos nossos clientes.</p>
+                    <p class="text-gray-700 mb-6">Nossa missão é preservar e realçar a beleza do seu veículo, utilizando apenas produtos premium e técnicas avançadas de trabalho.</p>
+                    <div class="flex space-x-4">
+                        <div class="bg-white p-4 rounded-lg shadow-md text-center">
+                            <div class="text-blue-500 text-3xl mb-2" aria-hidden="true">
+                                <i class="fas fa-car"></i>
+                            </div>
+                            <h3 class="font-semibold">+700</h3>
+                            <p class="text-sm text-gray-600">Veículos atendidos</p>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg shadow-md text-center">
+                            <div class="text-blue-500 text-3xl mb-2" aria-hidden="true">
+                                <i class="fas fa-star"></i>
+                            </div>
+                            <h3 class="font-semibold">4.9/5</h3>
+                            <p class="text-sm text-gray-600">Avaliação média</p>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg shadow-md text-center">
+                            <div class="text-blue-500 text-3xl mb-2" aria-hidden="true">
+                                <i class="fas fa-user-tie"></i>
+                            </div>
+                            <h3 class="font-semibold">2</h3>
+                            <p class="text-sm text-gray-600">Profissionais</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="md:w-1/2">
+                    <div class="relative">
+                        <img src="img/foto.equipe.jpeg" alt="Equipe profissional da L' Brothers" class="rounded-lg shadow-xl w-full">
+                        <div class="absolute -bottom-6 -right-6 bg-blue-500 text-white p-6 rounded-lg shadow-lg">
+                            <h3 class="text-xl font-bold mb-2">5 anos</h3>
+                            <p class="text-sm">de excelência em estética automotiva</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section class="py-16 bg-white">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-bold text-center mb-12">O que nossos clientes dizem</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Testimonial 1 -->
+                <div class="bg-gray-50 p-6 rounded-lg shadow-md">
+                    <div class="flex items-center mb-4" aria-label="Avaliação 5 estrelas">
+                        <div class="text-yellow-400 mr-2" aria-hidden="true">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                        </div>
+                    </div>
+                    <p class="text-gray-700 mb-4">"Levo meu carro na L' Brothers há 5 anos e sempre saio impressionado com o cuidado e atenção aos detalhes. Meu carro parece novo toda vez!"</p>
+                    <div class="flex items-center">
+                        <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Foto do cliente Ricardo Silva" class="w-10 h-10 rounded-full mr-3">
+                        <div>
+                            <h4 class="font-semibold">Ricardo Silva</h4>
+                            <p class="text-sm text-gray-600">Cliente desde 2020</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Testimonial 2 -->
+                <div class="bg-gray-50 p-6 rounded-lg shadow-md">
+                    <div class="flex items-center mb-4" aria-label="Avaliação 5 estrelas">
+                        <div class="text-yellow-400 mr-2" aria-hidden="true">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                        </div>
+                    </div>
+                    <p class="text-gray-700 mb-4">"O polimento cristalizado que fizeram no meu carro foi incrível. A pintagem ficou com um brilho que nunca tinha visto antes. Recomendo demais!"</p>
+                    <div class="flex items-center">
+                        <img src="https://randomuser.me/api/portraits/women/44.jpg" alt="Foto da cliente Fernanda Oliveira" class="w-10 h-10 rounded-full mr-3">
+                        <div>
+                            <h4 class="font-semibold">Fernanda Oliveira</h4>
+                            <p class="text-sm text-gray-600">Cliente desde 2021</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Testimonial 3 -->
+                <div class="bg-gray-50 p-6 rounded-lg shadow-md">
+                    <div class="flex items-center mb-4" aria-label="Avaliação 5 estrelas">
+                        <div class="text-yellow-400 mr-2" aria-hidden="true">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                        </div>
+                    </div>
+                    <p class="text-gray-700 mb-4">"Atendimento excepcional e profissionalismo em todos os detalhes. Meu carro nunca foi tão bem cuidado como na L' Brothers."</p>
+                    <div class="flex items-center">
+                        <img src="https://randomuser.me/api/portraits/men/75.jpg" alt="Foto do cliente Carlos Eduardo" class="w-10 h-10 rounded-full mr-3">
+                        <div>
+                            <h4 class="font-semibold">Carlos Eduardo</h4>
+                            <p class="text-sm text-gray-600">Cliente desde 2022</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contact" class="py-16 bg-gray-100">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row">
+                <div class="md:w-1/2 mb-10 md:mb-0 md:pr-10">
+                    <h2 class="text-3xl font-bold mb-6">Entre em Contato</h2>
+                    <p class="text-gray-700 mb-6">Tem dúvidas ou quer agendar um serviço? Preencha o formulário ou entre em contato pelos nossos canais.</p>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-start">
+                            <div class="text-blue-500 text-xl mr-4 mt-1" aria-hidden="true">
+                                <i class="fas fa-map-marker-alt"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold">Endereço</h3>
+                                <p class="text-gray-700">R. Floriano Miranda, 68 - São Paulo/SP</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start">
+                            <div class="text-blue-500 text-xl mr-4 mt-1" aria-hidden="true">
+                                <i class="fas fa-phone-alt"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold">Telefone</h3>
+                                <p class="text-gray-700">(11) 97723-8466</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start">
+                            <div class="text-blue-500 text-xl mr-4 mt-1" aria-hidden="true">
+                                <i class="fas fa-envelope"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold">Email</h3>
+                                <p class="text-gray-700">contato@lbrothers.com.br</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start">
+                            <div class="text-blue-500 text-xl mr-4 mt-1" aria-hidden="true">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold">Horário de Funcionamento</h3>
+                                <p class="text-gray-700">Seg-Sex: 8h às 17h<br>Sáb: 8h às 17h</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-8">
+                        <h3 class="font-semibold mb-4">Siga-nos no Instagram</h3>
+                        <div class="flex space-x-4">
+                            <a href="https://www.instagram.com/lavarapidolbrothers?igsh=ZGRvcHF2ejk1dW5t" 
+                               class="bg-pink-500 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-pink-600 transition"
+                               aria-label="Seguir L'Brothers no Instagram"
+                               target="_blank" rel="noopener">
+                                <i class="fab fa-instagram" aria-hidden="true"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="md:w-1/2">
+                    <div class="bg-white p-8 rounded-lg shadow-md">
+                        <h3 class="text-xl font-semibold mb-6">Envie uma mensagem</h3>
+                        <div id="contact-messages"></div>
+                        <form id="contact-form">
+                            <div class="input-container">
+                                <input type="text" id="contact-name" name="name" 
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                                       placeholder=" " required aria-label="Digite seu nome">
+                                <label for="contact-name" class="floating-label">Seu Nome</label>
+                            </div>
+                            
+                            <div class="input-container">
+                                <input type="email" id="contact-email" name="email"
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                                       placeholder=" " required aria-label="Digite seu email">
+                                <label for="contact-email" class="floating-label">Seu Email</label>
+                            </div>
+                            
+                            <div class="input-container">
+                                <input type="tel" id="contact-phone" name="phone"
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                                       placeholder=" " required aria-label="Digite seu telefone">
+                                <label for="contact-phone" class="floating-label">Seu Telefone</label>
+                            </div>
+                            
+                            <div class="input-container">
+                                <textarea id="contact-message" name="message" rows="4" 
+                                          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                                          placeholder=" " required aria-label="Digite sua mensagem"></textarea>
+                                <label for="contact-message" class="floating-label">Sua Mensagem</label>
+                            </div>
+                            
+                            <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg transition">
+                                Enviar Mensagem
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="gradient-bg text-white py-12">
+        <div class="container mx-auto px-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div>
+                    <div class="flex items-center space-x-2 mb-4">
+                        <i class="fas fa-car-side text-2xl text-blue-400" aria-hidden="true"></i>
+                        <h3 class="text-xl font-bold">L' Brothers</h3>
+                    </div>
+                    <p class="text-gray-300">Excelência em estética automotiva desde 2020. Cuidamos do seu veículo como se fosse nosso.</p>
+                </div>
+                
+                <div>
+                    <h4 class="text-lg font-semibold mb-4">Serviços</h4>
+                    <ul class="space-y-2">
+                        <li><a href="#services" class="text-gray-300 hover:text-white transition">Lavagem Premium</a></li>
+                        <li><a href="#services" class="text-gray-300 hover:text-white transition">Polimento Cristalizado</a></li>
+                        <li><a href="#services" class="text-gray-300 hover:text-white transition">Detalhamento Interno</a></li>
+                        <li><a href="#services" class="text-gray-300 hover:text-white transition">Proteção de Pintura</a></li>
+                        <li><a href="#services" class="text-gray-300 hover:text-white transition">Higienização Completa</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="text-lg font-semibold mb-4">Links Úteis</h4>
+                    <ul class="space-y-2">
+                        <li><a href="#services" class="text-gray-300 hover:text-white transition">Serviços</a></li>
+                        <li><a href="#about" class="text-gray-300 hover:text-white transition">Sobre Nós</a></li>
+                        <li><a href="#contact" class="text-gray-300 hover:text-white transition">Contato</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="border-t border-gray-700 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
+                <p class="text-gray-400">© 2025 L' Brothers. Todos os direitos reservados.</p>
+                <div class="flex space-x-6 mt-4 md:mt-0">
+                    <a href="https://www.instagram.com/lavarapidolbrothers?igsh=ZGRvcHF2ejk1dW5t" 
+                       class="bg-pink-500 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-pink-600 transition"
+                       aria-label="Instagram L'Brothers"
+                       target="_blank" rel="noopener">
+                        <i class="fab fa-instagram" aria-hidden="true"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Modals -->
+    <!-- Login/Register Modal -->
+    <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden" role="dialog" aria-labelledby="loginModalTitle" aria-modal="true">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 id="loginModalTitle" class="text-2xl font-bold">Área do Cliente</h3>
+                    <button onclick="closeModal('loginModal')" class="text-gray-500 hover:text-gray-700" aria-label="Fechar modal">
+                        <i class="fas fa-times" aria-hidden="true"></i>
+                    </button>
+                </div>
+                
+                <div class="flex border-b mb-6" role="tablist">
+                    <button onclick="switchTab('loginTab')" role="tab" aria-selected="true" aria-controls="loginTab" class="tab-button px-4 py-2 font-medium border-b-2 border-blue-500 text-blue-500">Login</button>
+                    <button onclick="switchTab('registerTab')" role="tab" aria-selected="false" aria-controls="registerTab" class="tab-button px-4 py-2 font-medium text-gray-500 hover:text-gray-700">Cadastro</button>
+                </div>
+                
+                <!-- Login Tab -->
+                <div id="loginTab" class="tab-content active" role="tabpanel">
+                    <div id="login-messages"></div>
+                    <form id="login-form">
+                        <div class="input-container">
+                            <input type="email" id="login-email" name="email" 
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                                   placeholder=" " required aria-label="Digite seu email">
+                            <label for="login-email" class="floating-label">Email</label>
+                        </div>
+                        
+                        <div class="input-container">
+                            <input type="password" id="login-password" name="password"
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                                   placeholder=" " required aria-label="Digite sua senha">
+                            <label for="login-password" class="floating-label">Senha</label>
+                        </div>
+                        
+                        <div class="flex justify-between items-center mb-6">
+                            <div class="flex items-center">
+                                <input type="checkbox" id="remember-me" class="mr-2">
+                                <label for="remember-me" class="text-sm text-gray-600">Lembrar de mim</label>
+                            </div>
+                            <button type="button" class="text-sm text-blue-500 hover:text-blue-700">Esqueceu a senha?</button>
+                        </div>
+                        
+                        <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg transition mb-4">Entrar</button>
+                        
+                        <div class="text-center">
+                            <p class="text-gray-600">Não tem uma conta? <button type="button" onclick="switchTab('registerTab')" class="text-blue-500 hover:text-blue-700 font-medium">Cadastre-se</button></p>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Register Tab -->
+                <div id="registerTab" class="tab-content" role="tabpanel">
+                    <div id="register-messages"></div>
+                    <form id="register-form">
+                        <div class="input-container">
+                            <input type="text" id="register-name" name="name"
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                                   placeholder=" " required aria-label="Digite seu nome completo">
+                            <label for="register-name" class="floating-label">Nome Completo</label>
+                        </div>
+                        
+                        <div class="input-container">
+                            <input type="email" id="register-email" name="email"
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                                   placeholder=" " required aria-label="Digite seu email">
+                            <label for="register-email" class="floating-label">Email</label>
+                        </div>
+                        
+                        <div class="input-container">
+                            <input type="tel" id="register-phone" name="phone"
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                                   placeholder=" " required aria-label="Digite seu telefone">
+                            <label for="register-phone" class="floating-label">Telefone</label>
+                        </div>
+                        
+                        <div class="input-container">
+                            <input type="password" id="register-password" name="password"
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                                   placeholder=" " required aria-label="Digite sua senha">
+                            <label for="register-password" class="floating-label">Senha</label>
+                        </div>
+                        
+                        <div class="input-container">
+                            <input type="password" id="register-confirm-password" name="confirmPassword"
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                                   placeholder=" " required aria-label="Confirme sua senha">
+                            <label for="register-confirm-password" class="floating-label">Confirmar Senha</label>
+                        </div>
+                        
+                        <div class="flex items-start mb-6">
+                            <input type="checkbox" id="accept-terms" class="mr-2 mt-1" required>
+                            <label for="accept-terms" class="text-sm text-gray-600">Eu concordo com os Termos de Serviço e Política de Privacidade</label>
+                        </div>
+                        
+                        <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg transition mb-4">Cadastrar</button>
+                        
+                        <div class="text-center">
+                            <p class="text-gray-600">Já tem uma conta? <button type="button" onclick="switchTab('loginTab')" class="text-blue-500 hover:text-blue-700 font-medium">Faça login</button></p>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Services Modal -->
+    <div id="servicesModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden" role="dialog" aria-labelledby="servicesModalTitle" aria-modal="true">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 id="servicesModalTitle" class="text-2xl font-bold">Nossos Serviços</h3>
+                    <button onclick="closeModal('servicesModal')" class="text-gray-500 hover:text-gray-700" aria-label="Fechar modal">
+                        <i class="fas fa-times" aria-hidden="true"></i>
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Service 1 -->
+                    <div class="border border-gray-200 rounded-lg p-6 hover:shadow-md transition">
+                        <div class="flex items-start mb-4">
+                            <div class="bg-blue-100 text-blue-500 p-3 rounded-full mr-4" aria-hidden="true">
+                                <i class="fas fa-car-wash text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-lg">Lavagem Premium</h4>
+                                <p class="text-blue-500 font-bold">R$ 120 - R$ 250</p>
+                            </div>
+                        </div>
+                        <p class="text-gray-600 mb-4">Lavagem completa com produtos importados, incluindo limpeza de rodas, painel, vidros e acabamento perfeito.</p>
+                        <button onclick="scheduleService('lavagem-premium')" class="text-blue-500 hover:text-blue-700 font-medium">Agendar este serviço</button>
+                    </div>
+                    
+                    <!-- Service 2 -->
+                    <div class="border border-gray-200 rounded-lg p-6 hover:shadow-md transition">
+                        <div class="flex items-start mb-4">
+                            <div class="bg-blue-100 text-blue-500 p-3 rounded-full mr-4" aria-hidden="true">
+                                <i class="fas fa-spray-can text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-lg">Polimento Cristalizado</h4>
+                                <p class="text-blue-500 font-bold">R$ 350 - R$ 600</p>
+                            </div>
+                        </div>
+                        <p class="text-gray-600 mb-4">Remoção de riscos e imperfeições, deixando a pintura como nova com proteção duradoura de até 12 meses.</p>
+                        <button onclick="scheduleService('polimento-cristalizado')" class="text-blue-500 hover:text-blue-700 font-medium">Agendar este serviço</button>
+                    </div>
+                    
+                    <!-- Service 3 -->
+                    <div class="border border-gray-200 rounded-lg p-6 hover:shadow-md transition">
+                        <div class="flex items-start mb-4">
+                            <div class="bg-blue-100 text-blue-500 p-3 rounded-full mr-4" aria-hidden="true">
+                                <i class="fas fa-vacuum text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-lg">Detalhamento Interno</h4>
+                                <p class="text-blue-500 font-bold">R$ 250 - R$ 400</p>
+                            </div>
+                        </div>
+                        <p class="text-gray-600 mb-4">Limpeza profunda do interior com higienização de estofados, painel, console, teto e todos os componentes.</p>
+                        <button onclick="scheduleService('detalhamento-interno')" class="text-blue-500 hover:text-blue-700 font-medium">Agendar este serviço</button>
+                    </div>
+                    
+                    <!-- Service 4 -->
+                    <div class="border border-gray-200 rounded-lg p-6 hover:shadow-md transition">
+                        <div class="flex items-start mb-4">
+                            <div class="bg-blue-100 text-blue-500 p-3 rounded-full mr-4" aria-hidden="true">
+                                <i class="fas fa-shield-alt text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-lg">Proteção de Pintura</h4>
+                                <p class="text-blue-500 font-bold">R$ 500 - R$ 1.200</p>
+                            </div>
+                        </div>
+                        <p class="text-gray-600 mb-4">Aplicação de cerâmica ou polímero para proteger a pintura contra raios UV, chuva ácida e contaminação.</p>
+                        <button onclick="scheduleService('protecao-pintura')" class="text-blue-500 hover:text-blue-700 font-medium">Agendar este serviço</button>
+                    </div>
+                    
+                    <!-- Service 5 -->
+                    <div class="border border-gray-200 rounded-lg p-6 hover:shadow-md transition">
+                        <div class="flex items-start mb-4">
+                            <div class="bg-blue-100 text-blue-500 p-3 rounded-full mr-4" aria-hidden="true">
+                                <i class="fas fa-wind text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-lg">Higienização de Ar Condicionado</h4>
+                                <p class="text-blue-500 font-bold">R$ 150 - R$ 250</p>
+                            </div>
+                        </div>
+                        <p class="text-gray-600 mb-4">Limpeza completa do sistema de ar condicionado, eliminando odores e bactérias para melhor qualidade do ar.</p>
+                        <button onclick="scheduleService('higienizacao-ar')" class="text-blue-500 hover:text-blue-700 font-medium">Agendar este serviço</button>
+                    </div>
+                    
+                    <!-- Service 6 -->
+                    <div class="border border-gray-200 rounded-lg p-6 hover:shadow-md transition">
+                        <div class="flex items-start mb-4">
+                            <div class="bg-blue-100 text-blue-500 p-3 rounded-full mr-4" aria-hidden="true">
+                                <i class="fas fa-tint text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-lg">Hidratação de Couro</h4>
+                                <p class="text-blue-500 font-bold">R$ 180 - R$ 300</p>
+                            </div>
+                        </div>
+                        <p class="text-gray-600 mb-4">Hidratação e proteção de bancos e componentes em couro para evitar ressecamento e rachaduras.</p>
+                        <button onclick="scheduleService('hidratacao-couro')" class="text-blue-500 hover:text-blue-700 font-medium">Agendar este serviço</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Schedule Modal -->
+    <div id="scheduleModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden" role="dialog" aria-labelledby="scheduleModalTitle" aria-modal="true">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 id="scheduleModalTitle" class="text-2xl font-bold">Agendar Serviço</h3>
+                    <button onclick="closeModal('scheduleModal')" class="text-gray-500 hover:text-gray-700" aria-label="Fechar modal">
+                        <i class="fas fa-times" aria-hidden="true"></i>
+                    </button>
+                </div>
+                
+                <div id="schedule-messages"></div>
+                <form id="schedule-form">
+                    <div class="mb-6">
+                        <label for="service-select" class="block font-semibold mb-2">Selecione o serviço:</label>
+                        <select id="service-select" name="service" 
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
+                            <option value="">Selecione um serviço</option>
+                            <option value="lavagem-premium">Lavagem Premium</option>
+                            <option value="polimento-cristalizado">Polimento Cristalizado</option>
+                            <option value="detalhamento-interno">Detalhamento Interno</option>
+                            <option value="protecao-pintura">Proteção de Pintura</option>
+                            <option value="higienizacao-ar">Higienização de Ar Condicionado</option>
+                            <option value="hidratacao-couro">Hidratação de Couro</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label for="vehicle-select" class="block font-semibold mb-2">Informações do veículo:</label>
+                        <div class="input-container">
+                            <input type="text" id="vehicle-info" name="vehicle" 
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                                   placeholder=" " required>
+                            <label for="vehicle-info" class="floating-label">Marca, Modelo e Ano (ex: Honda Civic 2020)</label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label for="schedule-date" class="block font-semibold mb-2">Selecione a data:</label>
+                        <input type="date" id="schedule-date" name="date"
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label for="schedule-time" class="block font-semibold mb-2">Selecione o horário:</label>
+                        <select id="schedule-time" name="time"
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
+                            <option value="">Selecione um horário</option>
+                            <option value="08:00">08:00</option>
+                            <option value="09:00">09:00</option>
+                            <option value="10:00">10:00</option>
+                            <option value="11:00">11:00</option>
+                            <option value="13:00">13:00</option>
+                            <option value="14:00">14:00</option>
+                            <option value="15:00">15:00</option>
+                            <option value="16:00">16:00</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label for="schedule-notes" class="block font-semibold mb-2">Observações (opcional):</label>
+                        <div class="input-container">
+                            <textarea id="schedule-notes" name="notes" rows="3"
+                                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                                      placeholder=" "></textarea>
+                            <label for="schedule-notes" class="floating-label">Alguma observação especial?</label>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg transition">
+                        Confirmar Agendamento
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden" role="dialog" aria-modal="true">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-8 text-center">
+            <div class="text-green-500 text-6xl mb-4" aria-hidden="true">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <h3 class="text-2xl font-bold mb-2">Sucesso!</h3>
+            <p id="success-message" class="text-gray-600 mb-6">Operação realizada com sucesso!</p>
+            <button onclick="closeModal('successModal')" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-6 rounded-lg transition">OK</button>
+        </div>
+    </div>
+
+    <!-- Admin Access Script -->
+    <script>
+        function checkAccess() {
+            const username = prompt("Usuário:");
+            const password = prompt("Senha:");
+
+            if (username === "ADMIN" && password === "ADMIN") {
+                window.location.href = "https://tiagoguimaraesunivesp.github.io/controle.estetica/";
+            } else {
+                alert("Usuário ou senha incorretos!");
+            }
+        }
+    </script>
+
+    <!-- Main JavaScript -->
+    <script>
+        // ========================================
+        // DATA MANAGEMENT SYSTEM (JSON Local)
+        // ========================================
+        
+        // Simple database using memory (will be enhanced with APIs later)
+        let appData = {
+            users: JSON.parse(localStorage.getItem('lbrothers_users') || '[]'),
+            appointments: JSON.parse(localStorage.getItem('lbrothers_appointments') || '[]'),
+            contacts: JSON.parse(localStorage.getItem('lbrothers_contacts') || '[]'),
+            currentUser: JSON.parse(localStorage.getItem('lbrothers_current_user') || 'null')
+        };
+
+        // Save data to localStorage
+        function saveData() {
+            localStorage.setItem('lbrothers_users', JSON.stringify(appData.users));
+            localStorage.setItem('lbrothers_appointments', JSON.stringify(appData.appointments));
+            localStorage.setItem('lbrothers_contacts', JSON.stringify(appData.contacts));
+            localStorage.setItem('lbrothers_current_user', JSON.stringify(appData.currentUser));
+        }
+
+        // Generate unique ID
+        function generateId() {
+            return 'id_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+        }
+
+        // Format date for display
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('pt-BR');
+        }
+
+        // ========================================
+        // USER MANAGEMENT
+        // ========================================
+        
+        function registerUser(userData) {
+            // Check if email already exists
+            const existingUser = appData.users.find(user => user.email === userData.email);
+            if (existingUser) {
+                return { success: false, message: 'Email já cadastrado!' };
+            }
+
+            // Create new user
+            const newUser = {
+                id: generateId(),
+                name: userData.name,
+                email: userData.email,
+                phone: userData.phone,
+                password: userData.password, // In real app, this would be hashed
+                createdAt: new Date().toISOString()
+            };
+
+            appData.users.push(newUser);
+            saveData();
+            
+            return { success: true, message: 'Cadastro realizado com sucesso!' };
+        }
+
+        function loginUser(email, password) {
+            const user = appData.users.find(user => user.email === email && user.password === password);
+            if (user) {
+                appData.currentUser = { id: user.id, name: user.name, email: user.email };
+                saveData();
+                return { success: true, user: appData.currentUser };
+            }
+            return { success: false, message: 'Email ou senha incorretos!' };
+        }
+
+        function logoutUser() {
+            appData.currentUser = null;
+            saveData();
+        }
+
+        function isLoggedIn() {
+            return appData.currentUser !== null;
+        }
+
+        // ========================================
+        // APPOINTMENT MANAGEMENT
+        // ========================================
+        
+        function createAppointment(appointmentData) {
+            if (!isLoggedIn()) {
+                return { success: false, message: 'Você precisa estar logado para agendar!' };
+            }
+
+            const appointment = {
+                id: generateId(),
+                userId: appData.currentUser.id,
+                service: appointmentData.service,
+                vehicle: appointmentData.vehicle,
+                date: appointmentData.date,
+                time: appointmentData.time,
+                notes: appointmentData.notes || '',
+                status: 'agendado',
+                createdAt: new Date().toISOString()
+            };
+
+            appData.appointments.push(appointment);
+            saveData();
+            
+            return { success: true, message: 'Agendamento confirmado com sucesso!', appointment };
+        }
+
+        function getUserAppointments() {
+            if (!isLoggedIn()) return [];
+            return appData.appointments.filter(app => app.userId === appData.currentUser.id);
+        }
+
+        // ========================================
+        // CONTACT MANAGEMENT
+        // ========================================
+        
+        function saveContact(contactData) {
+            const contact = {
+                id: generateId(),
+                name: contactData.name,
+                email: contactData.email,
+                phone: contactData.phone,
+                message: contactData.message,
+                createdAt: new Date().toISOString()
+            };
+
+            appData.contacts.push(contact);
+            saveData();
+            
+            return { success: true, message: 'Mensagem enviada com sucesso!' };
+        }
+
+        // ========================================
+        // UI HELPER FUNCTIONS
+        // ========================================
+        
+        function showMessage(containerId, message, type = 'success') {
+            const container = document.getElementById(containerId);
+            const className = type === 'success' ? 'success-message' : 'error-message';
+            container.innerHTML = `<div class="${className}">${message}</div>`;
+            
+            // Remove message after 5 seconds
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 5000);
+        }
+
+        function clearForm(formId) {
+            document.getElementById(formId).reset();
+        }
+
+        // ========================================
+        // MODAL FUNCTIONS
+        // ========================================
+        
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            const button = document.querySelector('[onclick="toggleMobileMenu()"]');
+            const isHidden = menu.classList.contains('hidden');
+            
+            menu.classList.toggle('hidden');
+            button.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+        }
+
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+            
+            // Focus management for accessibility
+            const modal = document.getElementById(modalId);
+            const firstFocusable = modal.querySelector('button, input, select, textarea');
+            if (firstFocusable) firstFocusable.focus();
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }
+
+        function switchTab(tabId) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(tabId).classList.add('active');
+
+            // Update tab buttons
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('border-b-2', 'border-blue-500', 'text-blue-500');
+                button.classList.add('text-gray-500');
+                button.setAttribute('aria-selected', 'false');
+            });
+
+            // Highlight active tab button
+            event.currentTarget.classList.add('border-b-2', 'border-blue-500', 'text-blue-500');
+            event.currentTarget.classList.remove('text-gray-500');
+            event.currentTarget.setAttribute('aria-selected', 'true');
+        }
+
+        // ========================================
+        // SERVICE SCHEDULING
+        // ========================================
+        
+        function scheduleService(serviceType) {
+            if (!isLoggedIn()) {
+                openModal('loginModal');
+                return;
+            }
+            
+            openModal('scheduleModal');
+            
+            // Pre-select service if provided
+            if (serviceType) {
+                document.getElementById('service-select').value = serviceType;
+            }
+        }
+
+        // ========================================
+        // FORM HANDLERS
+        // ========================================
+        
+        // Initialize forms when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set minimum date to today
+            const today = new Date().toISOString().split('T')[0];
+            const dateInput = document.getElementById('schedule-date');
+            if (dateInput) {
+                dateInput.min = today;
+            }
+
+            // Login form
+            document.getElementById('login-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(this);
+                const email = formData.get('email');
+                const password = formData.get('password');
+                
+                const result = loginUser(email, password);
+                
+                if (result.success) {
+                    showMessage('login-messages', 'Login realizado com sucesso!', 'success');
+                    setTimeout(() => {
+                        closeModal('loginModal');
+                        clearForm('login-form');
+                        updateUserInterface();
+                    }, 1000);
+                } else {
+                    showMessage('login-messages', result.message, 'error');
+                }
+            });
+            
+            // Register form
+            document.getElementById('register-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(this);
+                const password = formData.get('password');
+                const confirmPassword = formData.get('confirmPassword');
+                
+                if (password !== confirmPassword) {
+                    showMessage('register-messages', 'As senhas não coincidem!', 'error');
+                    return;
+                }
+                
+                const userData = {
+                    name: formData.get('name'),
+                    email: formData.get('email'),
+                    phone: formData.get('phone'),
+                    password: password
+                };
+                
+                const result = registerUser(userData);
+                
+                if (result.success) {
+                    showMessage('register-messages', result.message, 'success');
+                    setTimeout(() => {
+                        switchTab('loginTab');
+                        clearForm('register-form');
+                    }, 2000);
+                } else {
+                    showMessage('register-messages', result.message, 'error');
+                }
+            });
+            
+            // Contact form
+            document.getElementById('contact-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(this);
+                const contactData = {
+                    name: formData.get('name'),
+                    email: formData.get('email'),
+                    phone: formData.get('phone'),
+                    message: formData.get('message')
+                };
+                
+                const result = saveContact(contactData);
+                
+                if (result.success) {
+                    showMessage('contact-messages', result.message, 'success');
+                    clearForm('contact-form');
+                } else {
+                    showMessage('contact-messages', 'Erro ao enviar mensagem. Tente novamente.', 'error');
+                }
+            });
+            
+            // Schedule form
+            document.getElementById('schedule-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(this);
+                const appointmentData = {
+                    service: formData.get('service'),
+                    vehicle: formData.get('vehicle'),
+                    date: formData.get('date'),
+                    time: formData.get('time'),
+                    notes: formData.get('notes')
+                };
+                
+                const result = createAppointment(appointmentData);
+                
+                if (result.success) {
+                    closeModal('scheduleModal');
+                    document.getElementById('success-message').textContent = result.message;
+                    openModal('successModal');
+                    clearForm('schedule-form');
+                } else {
+                    showMessage('schedule-messages', result.message, 'error');
+                }
+            });
+
+            // Update UI based on login status
+            updateUserInterface();
+        });
+
+        // ========================================
+        // UI UPDATE FUNCTIONS
+        // ========================================
+        
+        function updateUserInterface() {
+            // Update header based on login status
+            // This is a placeholder - in a real app you might show user name, logout button, etc.
+            
+            // Show user appointments if logged in
+            displayUserAppointments();
+        }
+
+        function displayUserAppointments() {
+            if (!isLoggedIn()) return;
+            
+            const appointments = getUserAppointments();
+            console.log('User appointments:', appointments); // For testing
+            
+            // You could add a section to display appointments on the page
+            // This is where you'd update the UI to show user's scheduled appointments
+        }
+
+        // ========================================
+        // API SIMULATION (for future enhancement)
+        // ========================================
+        
+        // Simulate WhatsApp API integration
+        function sendWhatsAppNotification(appointment) {
+            // This would integrate with WhatsApp Business API in production
+            console.log('WhatsApp notification would be sent:', {
+                phone: appData.currentUser.phone,
+                message: `Agendamento confirmado para ${formatDate(appointment.date)} às ${appointment.time} - ${appointment.service}`
+            });
+        }
+
+        // Simulate email API integration  
+        function sendEmailConfirmation(appointment) {
+            // This would integrate with email service in production
+            console.log('Email confirmation would be sent:', {
+                email: appData.currentUser.email,
+                subject: 'Confirmação de Agendamento - L\'Brothers',
+                message: `Seu agendamento foi confirmado para ${formatDate(appointment.date)} às ${appointment.time}`
+            });
+        }
+
+        // ========================================
+        // ANALYTICS SIMULATION
+        // ========================================
+        
+        function trackEvent(eventName, data) {
+            // This would integrate with analytics service in production
+            console.log('Analytics event:', eventName, data);
+        }
+
+        // Track form submissions
+        function trackFormSubmission(formType) {
+            trackEvent('form_submission', {
+                type: formType,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        // ========================================
+        // ACCESSIBILITY ENHANCEMENTS
+        // ========================================
+        
+        // Keyboard navigation for modals
+        document.addEventListener('keydown', function(e) {
+            // Close modal on Escape key
+            if (e.key === 'Escape') {
+                const openModals = document.querySelectorAll('.fixed:not(.hidden)');
+                openModals.forEach(modal => {
+                    if (modal.id && modal.id.includes('Modal')) {
+                        closeModal(modal.id);
+                    }
+                });
+            }
+        });
+
+        // ========================================
+        // SERVICE WORKER (for future PWA features)
+        // ========================================
+        
+        // Register service worker for offline functionality
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                // navigator.serviceWorker.register('/sw.js'); // Uncomment for PWA
+            });
+        }
+
+        // ========================================
+        // DATA EXPORT/IMPORT (for testing)
+        // ========================================
+        
+        function exportData() {
+            const dataBlob = new Blob([JSON.stringify(appData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'lbrothers-data.json';
+            a.click();
+        }
+
+        function clearAllData() {
+            if (confirm('Tem certeza que deseja limpar todos os dados? Esta ação não pode ser desfeita.')) {
+                localStorage.removeItem('lbrothers_users');
+                localStorage.removeItem('lbrothers_appointments');
+                localStorage.removeItem('lbrothers_contacts');
+                localStorage.removeItem('lbrothers_current_user');
+                location.reload();
+            }
+        }
+
+        // Make functions available for testing in console
+        window.lbrothersDebug = {
+            exportData,
+            clearAllData,
+            appData,
+            registerUser,
+            loginUser,
+            createAppointment,
+            saveContact
+        };
+
+        // ========================================
+        // FORM VALIDATION ENHANCEMENTS
+        // ========================================
+        
+        // Real-time email validation
+        function validateEmail(email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(email);
+        }
+
+        // Real-time phone validation (Brazilian format)
+        function validatePhone(phone) {
+            const phoneRegex = /^(\(?\d{2}\)?\s?)?(\d{4,5})-?(\d{4})$/;
+            return phoneRegex.test(phone.replace(/\s/g, ''));
+        }
+
+        // Add real-time validation to forms
+        document.addEventListener('DOMContentLoaded', function() {
+            // Email validation
+            const emailInputs = document.querySelectorAll('input[type="email"]');
+            emailInputs.forEach(input => {
+                input.addEventListener('blur', function() {
+                    if (this.value && !validateEmail(this.value)) {
+                        this.setCustomValidity('Por favor, insira um email válido');
+                        this.classList.add('border-red-500');
+                    } else {
+                        this.setCustomValidity('');
+                        this.classList.remove('border-red-500');
+                    }
+                });
+            });
+
+            // Phone validation
+            const phoneInputs = document.querySelectorAll('input[type="tel"]');
+            phoneInputs.forEach(input => {
+                input.addEventListener('blur', function() {
+                    if (this.value && !validatePhone(this.value)) {
+                        this.setCustomValidity('Por favor, insira um telefone válido');
+                        this.classList.add('border-red-500');
+                    } else {
+                        this.setCustomValidity('');
+                        this.classList.remove('border-red-500');
+                    }
+                });
+            });
+        });
+
+        // ========================================
+        // TESTING UTILITIES
+        // ========================================
+        
+        function runTests() {
+            console.log('Running basic tests...');
+            
+            // Test 1: User registration
+            const testUser = {
+                name: 'Test User',
+                email: 'test@example.com', 
+                phone: '11999999999',
+                password: 'test123'
+            };
+            
+            const regResult = registerUser(testUser);
+            console.assert(regResult.success, 'User registration failed');
+            
+            // Test 2: User login
+            const loginResult = loginUser('test@example.com', 'test123');
+            console.assert(loginResult.success, 'User login failed');
+            
+            // Test 3: Create appointment
+            const testAppointment = {
+                service: 'lavagem-premium',
+                vehicle: 'Honda Civic 2020',
+                date: '2025-10-15',
+                time: '10:00',
+                notes: 'Test appointment'
+            };
+            
+            const appResult = createAppointment(testAppointment);
+            console.assert(appResult.success, 'Appointment creation failed');
+            
+            // Test 4: Save contact
+            const testContact = {
+                name: 'Test Contact',
+                email: 'contact@example.com',
+                phone: '11888888888',
+                message: 'Test message'
+            };
+            
+            const contactResult = saveContact(testContact);
+            console.assert(contactResult.success, 'Contact save failed');
+            
+            console.log('Basic tests completed. Check console for any assertion failures.');
+            
+            // Clean up test data
+            appData.users = appData.users.filter(user => user.email !== 'test@example.com');
+            saveData();
+        }
+
+        // Make test function available in console
+        window.runTests = runTests;
+
+        console.log('L\'Brothers Enhanced System loaded successfully!');
+        console.log('Debug functions available at: window.lbrothersDebug');
+        console.log('Run tests with: runTests()');
+    </script>
+</body>
+</html>
+                
