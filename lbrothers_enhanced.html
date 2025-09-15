@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -7,6 +8,10 @@
     <meta name="description" content="Estética automotiva premium em São Paulo. Agendamento online, lavagem, polimento e detalhamento profissional.">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Supabase Client -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <!-- Chart.js para análises -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chart.js/3.9.1/chart.min.js"></script>
     <style>
         .gradient-bg {
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
@@ -24,10 +29,10 @@
             color: #9ca3af;
             font-size: 14px;
         }
-        input:focus ~ .floating-label,
-        input:not(:placeholder-shown) ~ .floating-label,
-        textarea:focus ~ .floating-label,
-        textarea:not(:placeholder-shown) ~ .floating-label {
+        .input-container input:focus ~ .floating-label,
+        .input-container input:not(:placeholder-shown) ~ .floating-label,
+        .input-container textarea:focus ~ .floating-label,
+        .input-container textarea:not(:placeholder-shown) ~ .floating-label {
             top: -8px;
             left: 10px;
             font-size: 12px;
@@ -50,17 +55,11 @@
             from { opacity: 0; }
             to { opacity: 1; }
         }
-        .calendar-day {
-            transition: all 0.2s;
+        .loading {
+            display: none;
         }
-        .calendar-day:hover:not(.disabled) {
-            background-color: #3b82f6;
-            color: white;
-            cursor: pointer;
-        }
-        .calendar-day.selected {
-            background-color: #3b82f6;
-            color: white;
+        .loading.active {
+            display: inline-block;
         }
         .success-message {
             background: #10b981;
@@ -76,50 +75,169 @@
             border-radius: 0.5rem;
             margin-bottom: 1rem;
         }
+        .spinner {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 2s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .admin-panel {
+            display: none;
+        }
+        .admin-panel.active {
+            display: block;
+        }
+        .dashboard-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .status-agendado { background: #dbeafe; color: #1e40af; }
+        .status-confirmado { background: #d1fae5; color: #065f46; }
+        .status-concluido { background: #f3f4f6; color: #374151; }
+        .status-cancelado { background: #fecaca; color: #991b1b; }
     </style>
 </head>
 <body class="font-sans bg-gray-100">
+    
+    <!-- Header -->
     <header class="gradient-bg text-white shadow-lg">
-    <div class="container mx-auto px-4 py-6">
-        <div class="flex justify-between items-center">
-            <div class="flex items-center space-x-2 text-left focus:outline-none" 
-                 aria-label="Ir para a página inicial L' Brothers">
-                <i class="fas fa-car-side text-3xl text-blue-400" aria-hidden="true"></i>
-                <span class="text-2xl font-bold text-white">L' Brothers</span>
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-car-side text-3xl text-blue-400" aria-hidden="true"></i>
+                    <span class="text-2xl font-bold text-white">L' Brothers</span>
+                </div>
+        
+                <nav class="hidden md:flex space-x-8" role="navigation">
+                    <a href="#services" class="hover:text-blue-300 transition">Serviços</a>
+                    <a href="#about" class="hover:text-blue-300 transition">Sobre Nós</a>
+                    <a href="#contact" class="hover:text-blue-300 transition">Contato</a>
+                    <a href="#analytics" class="hover:text-blue-300 transition">Análises</a>
+                    
+                    <div id="user-menu-logged-out">
+                        <button onclick="openModal('loginModal')" class="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-full transition">
+                            Área do Cliente
+                        </button>
+                        <button onclick="openModal('adminLoginModal')" class="bg-purple-500 hover:bg-purple-600 px-4 py-2 rounded-full transition">
+                            Admin
+                        </button>
+                    </div>
+                    
+                    <div id="user-menu-logged-in" class="hidden">
+                        <span id="user-name" class="mr-4"></span>
+                        <button onclick="toggleUserDashboard()" class="bg-green-500 hover:bg-green-600 px-4 py-2 rounded-full transition">
+                            Dashboard
+                        </button>
+                        <button onclick="logout()" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-full transition">
+                            Sair
+                        </button>
+                    </div>
+                </nav>
+
+                <button class="md:hidden text-2xl" onclick="toggleMobileMenu()">
+                    <i class="fas fa-bars"></i>
+                </button>
             </div>
-    
-            <nav class="hidden md:flex space-x-8" role="navigation" aria-label="Menu principal">
-            <a href="#services" class="hover:text-blue-300 transition" aria-label="Ver nossos serviços">Serviços</a>
-            <a href="#about" class="hover:text-blue-300 transition" aria-label="Sobre nossa empresa">Sobre Nós</a>
-            <a href="#contact" class="hover:text-blue-300 transition" aria-label="Entre em contato">Contato</a>
-
-            <button onclick="openModal('loginModal')" class="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-full transition" aria-label="Acessar área do cliente">Área do Cliente</button>
-    
-            <button onclick="checkAccess()" class="bg-purple-500 hover:bg-purple-600 px-4 py-2 rounded-full transition" aria-label="Acessar painel administrativo">
-                Meu Controle
-            </button>
-            </nav>
-
-            <button class="md:hidden text-2xl" onclick="toggleMobileMenu()" aria-label="Abrir menu mobile" aria-expanded="false">
-                <i class="fas fa-bars" aria-hidden="true"></i>
-            </button>
         </div>
+    </header>
+
+    <!-- User Dashboard -->
+    <div id="userDashboard" class="hidden bg-white shadow-lg border-b">
+        <div class="container mx-auto px-4 py-6">
+            <h2 class="text-2xl font-bold mb-4">Meus Agendamentos</h2>
+            <div id="user-appointments" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Appointments will be loaded here -->
+            </div>
             
-        <!-- Mobile Menu -->
-        <div id="mobileMenu" class="hidden md:hidden mt-4 pb-4" role="navigation" aria-label="Menu mobile">
-            <div class="flex flex-col space-y-4">
-                <a href="#services" class="hover:text-blue-300 transition">Serviços</a>
-                <a href="#about" class="hover:text-blue-300 transition">Sobre Nós</a>
-                <a href="#contact" class="hover:text-blue-300 transition">Contato</a>
-                <button onclick="checkAccess()" class="bg-purple-500 hover:bg-purple-600 px-4 py-2 rounded-full transition w-full">Área do ADM</button> 
-                <button onclick="openModal('loginModal')" class="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-full transition w-full">Área do Cliente</button>
+            <div class="mt-6">
+                <button onclick="openModal('scheduleModal')" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg transition">
+                    Novo Agendamento
+                </button>
             </div>
         </div>
     </div>
-    </header>
+
+    <!-- Admin Panel -->
+    <div id="adminPanel" class="admin-panel bg-gray-50">
+        <div class="container mx-auto px-4 py-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-bold">Painel Administrativo</h2>
+                <button onclick="toggleAdminPanel()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg">
+                    Fechar Painel
+                </button>
+            </div>
+            
+            <!-- Dashboard Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="dashboard-card">
+                    <h3 class="text-lg font-semibold text-gray-700">Total Agendamentos</h3>
+                    <p id="total-appointments" class="text-3xl font-bold text-blue-600">0</p>
+                </div>
+                <div class="dashboard-card">
+                    <h3 class="text-lg font-semibold text-gray-700">Agendamentos Hoje</h3>
+                    <p id="today-appointments" class="text-3xl font-bold text-green-600">0</p>
+                </div>
+                <div class="dashboard-card">
+                    <h3 class="text-lg font-semibold text-gray-700">Total Clientes</h3>
+                    <p id="total-users" class="text-3xl font-bold text-purple-600">0</p>
+                </div>
+                <div class="dashboard-card">
+                    <h3 class="text-lg font-semibold text-gray-700">Mensagens</h3>
+                    <p id="total-contacts" class="text-3xl font-bold text-yellow-600">0</p>
+                </div>
+            </div>
+            
+            <!-- Appointments Management -->
+            <div class="dashboard-card mb-8">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold">Gerenciar Agendamentos</h3>
+                    <button onclick="refreshAppointments()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
+                        <i class="fas fa-refresh mr-2"></i>Atualizar
+                    </button>
+                </div>
+                <div id="admin-appointments" class="overflow-x-auto">
+                    <!-- Appointments table will be loaded here -->
+                </div>
+            </div>
+            
+            <!-- Analytics -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div class="dashboard-card">
+                    <h3 class="text-xl font-bold mb-4">Serviços Mais Solicitados</h3>
+                    <canvas id="servicesChart" width="400" height="200"></canvas>
+                </div>
+                <div class="dashboard-card">
+                    <h3 class="text-xl font-bold mb-4">Agendamentos por Mês</h3>
+                    <canvas id="monthlyChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+            
+            <!-- Contacts Management -->
+            <div class="dashboard-card">
+                <h3 class="text-xl font-bold mb-4">Mensagens de Contato</h3>
+                <div id="admin-contacts" class="space-y-4">
+                    <!-- Contacts will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Hero Section -->
-    <section class="gradient-bg text-white py-20" role="banner">
+    <section class="gradient-bg text-white py-20">
         <div class="container mx-auto px-4 flex flex-col md:flex-row items-center">
             <div class="md:w-1/2 mb-10 md:mb-0">
                 <h1 class="text-4xl md:text-5xl font-bold mb-6">Transforme seu veículo em uma obra de arte</h1>
@@ -142,54 +260,47 @@
         <div class="container mx-auto px-4">
             <h2 class="text-3xl font-bold text-center mb-12">Nossos Serviços Premium</h2>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <!-- Service 1 -->
                 <div class="service-card bg-white rounded-lg shadow-md overflow-hidden transition duration-300">
                     <div class="h-48 overflow-hidden">
-                        <img src="https://images.unsplash.com/photo-1607860108855-64acf2078ed9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80" alt="Lavagem Premium profissional" class="w-full h-full object-cover">
+                        <img src="https://images.unsplash.com/photo-1607860108855-64acf2078ed9?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80" alt="Lavagem Premium" class="w-full h-full object-cover">
                     </div>
                     <div class="p-6">
                         <h3 class="text-xl font-semibold mb-2">Lavagem Premium</h3>
-                        <p class="text-gray-600 mb-4">Lavagem completa com produtos importados e acabamento perfeito para seu veículo.</p>
+                        <p class="text-gray-600 mb-4">Lavagem completa com produtos importados e acabamento perfeito.</p>
                         <div class="flex justify-between items-center">
-                            <span class="text-blue-500 font-bold">A partir de R$ 120</span>
+                            <span class="text-blue-500 font-bold">R$ 120 - R$ 250</span>
                             <button onclick="scheduleService('lavagem-premium')" class="text-blue-500 hover:text-blue-700 font-medium">Agendar</button>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Service 2 -->
                 <div class="service-card bg-white rounded-lg shadow-md overflow-hidden transition duration-300">
                     <div class="h-48 overflow-hidden">
-                        <img src="https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1528&q=80" alt="Polimento cristalizado profissional" class="w-full h-full object-cover">
+                        <img src="https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2?ixlib=rb-4.0.3&auto=format&fit=crop&w=1528&q=80" alt="Polimento" class="w-full h-full object-cover">
                     </div>
                     <div class="p-6">
                         <h3 class="text-xl font-semibold mb-2">Polimento Cristalizado</h3>
-                        <p class="text-gray-600 mb-4">Remoção de riscos e imperfeições, deixando a pintura como nova com proteção duradoura.</p>
+                        <p class="text-gray-600 mb-4">Remoção de riscos e imperfeições, proteção duradoura.</p>
                         <div class="flex justify-between items-center">
-                            <span class="text-blue-500 font-bold">A partir de R$ 350</span>
+                            <span class="text-blue-500 font-bold">R$ 350 - R$ 600</span>
                             <button onclick="scheduleService('polimento-cristalizado')" class="text-blue-500 hover:text-blue-700 font-medium">Agendar</button>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Service 3 -->
                 <div class="service-card bg-white rounded-lg shadow-md overflow-hidden transition duration-300">
                     <div class="h-48 overflow-hidden">
-                        <img src="https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80" alt="Detalhamento interno profissional" class="w-full h-full object-cover">
+                        <img src="https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80" alt="Detalhamento" class="w-full h-full object-cover">
                     </div>
                     <div class="p-6">
                         <h3 class="text-xl font-semibold mb-2">Detalhamento Interno</h3>
-                        <p class="text-gray-600 mb-4">Limpeza profunda do interior com higienização de estofados, painel e todos os componentes.</p>
+                        <p class="text-gray-600 mb-4">Limpeza profunda com higienização completa.</p>
                         <div class="flex justify-between items-center">
-                            <span class="text-blue-500 font-bold">A partir de R$ 250</span>
+                            <span class="text-blue-500 font-bold">R$ 250 - R$ 400</span>
                             <button onclick="scheduleService('detalhamento-interno')" class="text-blue-500 hover:text-blue-700 font-medium">Agendar</button>
                         </div>
                     </div>
                 </div>
-            </div>
-            
-            <div class="text-center mt-12">
-                <button onclick="openModal('servicesModal')" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-full font-medium transition">Ver Todos os Serviços</button>
             </div>
         </div>
     </section>
@@ -229,7 +340,7 @@
                 </div>
                 <div class="md:w-1/2">
                     <div class="relative">
-                        <img src="img/foto.equipe.jpeg" alt="Equipe profissional da L' Brothers" class="rounded-lg shadow-xl w-full">
+                        <img src="https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80" alt="Equipe profissional da L' Brothers" class="rounded-lg shadow-xl w-full">
                         <div class="absolute -bottom-6 -right-6 bg-blue-500 text-white p-6 rounded-lg shadow-lg">
                             <h3 class="text-xl font-bold mb-2">5 anos</h3>
                             <p class="text-sm">de excelência em estética automotiva</p>
@@ -240,72 +351,31 @@
         </div>
     </section>
 
-    <!-- Testimonials -->
-    <section class="py-16 bg-white">
+    <!-- Analytics Section -->
+    <section id="analytics" class="py-16 bg-white">
         <div class="container mx-auto px-4">
-            <h2 class="text-3xl font-bold text-center mb-12">O que nossos clientes dizem</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <!-- Testimonial 1 -->
+            <h2 class="text-3xl font-bold text-center mb-12">Análise de Dados</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div class="bg-gray-50 p-6 rounded-lg shadow-md">
-                    <div class="flex items-center mb-4" aria-label="Avaliação 5 estrelas">
-                        <div class="text-yellow-400 mr-2" aria-hidden="true">
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
+                    <h3 class="text-xl font-bold mb-4">Estatísticas Públicas</h3>
+                    <div class="space-y-4">
+                        <div class="flex justify-between">
+                            <span>Clientes Atendidos:</span>
+                            <span class="font-bold" id="public-clients">700+</span>
                         </div>
-                    </div>
-                    <p class="text-gray-700 mb-4">"Levo meu carro na L' Brothers há 5 anos e sempre saio impressionado com o cuidado e atenção aos detalhes. Meu carro parece novo toda vez!"</p>
-                    <div class="flex items-center">
-                        <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Foto do cliente Ricardo Silva" class="w-10 h-10 rounded-full mr-3">
-                        <div>
-                            <h4 class="font-semibold">Ricardo Silva</h4>
-                            <p class="text-sm text-gray-600">Cliente desde 2020</p>
+                        <div class="flex justify-between">
+                            <span>Avaliação Média:</span>
+                            <span class="font-bold text-yellow-500" id="public-rating">4.9/5</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Serviços Realizados:</span>
+                            <span class="font-bold" id="public-services">1500+</span>
                         </div>
                     </div>
                 </div>
-                
-                <!-- Testimonial 2 -->
                 <div class="bg-gray-50 p-6 rounded-lg shadow-md">
-                    <div class="flex items-center mb-4" aria-label="Avaliação 5 estrelas">
-                        <div class="text-yellow-400 mr-2" aria-hidden="true">
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                        </div>
-                    </div>
-                    <p class="text-gray-700 mb-4">"O polimento cristalizado que fizeram no meu carro foi incrível. A pintagem ficou com um brilho que nunca tinha visto antes. Recomendo demais!"</p>
-                    <div class="flex items-center">
-                        <img src="https://randomuser.me/api/portraits/women/44.jpg" alt="Foto da cliente Fernanda Oliveira" class="w-10 h-10 rounded-full mr-3">
-                        <div>
-                            <h4 class="font-semibold">Fernanda Oliveira</h4>
-                            <p class="text-sm text-gray-600">Cliente desde 2021</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Testimonial 3 -->
-                <div class="bg-gray-50 p-6 rounded-lg shadow-md">
-                    <div class="flex items-center mb-4" aria-label="Avaliação 5 estrelas">
-                        <div class="text-yellow-400 mr-2" aria-hidden="true">
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                        </div>
-                    </div>
-                    <p class="text-gray-700 mb-4">"Atendimento excepcional e profissionalismo em todos os detalhes. Meu carro nunca foi tão bem cuidado como na L' Brothers."</p>
-                    <div class="flex items-center">
-                        <img src="https://randomuser.me/api/portraits/men/75.jpg" alt="Foto do cliente Carlos Eduardo" class="w-10 h-10 rounded-full mr-3">
-                        <div>
-                            <h4 class="font-semibold">Carlos Eduardo</h4>
-                            <p class="text-sm text-gray-600">Cliente desde 2022</p>
-                        </div>
-                    </div>
+                    <h3 class="text-xl font-bold mb-4">Tendências</h3>
+                    <canvas id="publicTrendsChart" width="400" height="200"></canvas>
                 </div>
             </div>
         </div>
@@ -317,59 +387,27 @@
             <div class="flex flex-col md:flex-row">
                 <div class="md:w-1/2 mb-10 md:mb-0 md:pr-10">
                     <h2 class="text-3xl font-bold mb-6">Entre em Contato</h2>
-                    <p class="text-gray-700 mb-6">Tem dúvidas ou quer agendar um serviço? Preencha o formulário ou entre em contato pelos nossos canais.</p>
-                    
                     <div class="space-y-4">
                         <div class="flex items-start">
-                            <div class="text-blue-500 text-xl mr-4 mt-1" aria-hidden="true">
-                                <i class="fas fa-map-marker-alt"></i>
-                            </div>
+                            <i class="fas fa-map-marker-alt text-blue-500 text-xl mr-4 mt-1"></i>
                             <div>
                                 <h3 class="font-semibold">Endereço</h3>
                                 <p class="text-gray-700">R. Floriano Miranda, 68 - São Paulo/SP</p>
                             </div>
                         </div>
-                        
                         <div class="flex items-start">
-                            <div class="text-blue-500 text-xl mr-4 mt-1" aria-hidden="true">
-                                <i class="fas fa-phone-alt"></i>
-                            </div>
+                            <i class="fas fa-phone-alt text-blue-500 text-xl mr-4 mt-1"></i>
                             <div>
                                 <h3 class="font-semibold">Telefone</h3>
                                 <p class="text-gray-700">(11) 97723-8466</p>
                             </div>
                         </div>
-                        
                         <div class="flex items-start">
-                            <div class="text-blue-500 text-xl mr-4 mt-1" aria-hidden="true">
-                                <i class="fas fa-envelope"></i>
-                            </div>
+                            <i class="fas fa-envelope text-blue-500 text-xl mr-4 mt-1"></i>
                             <div>
                                 <h3 class="font-semibold">Email</h3>
                                 <p class="text-gray-700">contato@lbrothers.com.br</p>
                             </div>
-                        </div>
-                        
-                        <div class="flex items-start">
-                            <div class="text-blue-500 text-xl mr-4 mt-1" aria-hidden="true">
-                                <i class="fas fa-clock"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-semibold">Horário de Funcionamento</h3>
-                                <p class="text-gray-700">Seg-Sex: 8h às 17h<br>Sáb: 8h às 17h</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="mt-8">
-                        <h3 class="font-semibold mb-4">Siga-nos no Instagram</h3>
-                        <div class="flex space-x-4">
-                            <a href="https://www.instagram.com/lavarapidolbrothers?igsh=ZGRvcHF2ejk1dW5t" 
-                               class="bg-pink-500 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-pink-600 transition"
-                               aria-label="Seguir L'Brothers no Instagram"
-                               target="_blank" rel="noopener">
-                                <i class="fab fa-instagram" aria-hidden="true"></i>
-                            </a>
                         </div>
                     </div>
                 </div>
@@ -380,34 +418,19 @@
                         <div id="contact-messages"></div>
                         <form id="contact-form">
                             <div class="input-container">
-                                <input type="text" id="contact-name" name="name" 
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                                       placeholder=" " required aria-label="Digite seu nome">
+                                <input type="text" id="contact-name" name="name" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder=" " required>
                                 <label for="contact-name" class="floating-label">Seu Nome</label>
                             </div>
-                            
                             <div class="input-container">
-                                <input type="email" id="contact-email" name="email"
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                                       placeholder=" " required aria-label="Digite seu email">
+                                <input type="email" id="contact-email" name="email" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder=" " required>
                                 <label for="contact-email" class="floating-label">Seu Email</label>
                             </div>
-                            
                             <div class="input-container">
-                                <input type="tel" id="contact-phone" name="phone"
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                                       placeholder=" " required aria-label="Digite seu telefone">
-                                <label for="contact-phone" class="floating-label">Seu Telefone</label>
-                            </div>
-                            
-                            <div class="input-container">
-                                <textarea id="contact-message" name="message" rows="4" 
-                                          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                                          placeholder=" " required aria-label="Digite sua mensagem"></textarea>
+                                <textarea id="contact-message" name="message" rows="4" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder=" " required></textarea>
                                 <label for="contact-message" class="floating-label">Sua Mensagem</label>
                             </div>
-                            
                             <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg transition">
+                                <span class="loading spinner mr-2"></span>
                                 Enviar Mensagem
                             </button>
                         </form>
@@ -420,310 +443,152 @@
     <!-- Footer -->
     <footer class="gradient-bg text-white py-12">
         <div class="container mx-auto px-4">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div>
-                    <div class="flex items-center space-x-2 mb-4">
-                        <i class="fas fa-car-side text-2xl text-blue-400" aria-hidden="true"></i>
-                        <h3 class="text-xl font-bold">L' Brothers</h3>
-                    </div>
-                    <p class="text-gray-300">Excelência em estética automotiva desde 2020. Cuidamos do seu veículo como se fosse nosso.</p>
+            <div class="text-center">
+                <div class="flex items-center justify-center space-x-2 mb-4">
+                    <i class="fas fa-car-side text-2xl text-blue-400"></i>
+                    <h3 class="text-xl font-bold">L' Brothers</h3>
                 </div>
-                
-                <div>
-                    <h4 class="text-lg font-semibold mb-4">Serviços</h4>
-                    <ul class="space-y-2">
-                        <li><a href="#services" class="text-gray-300 hover:text-white transition">Lavagem Premium</a></li>
-                        <li><a href="#services" class="text-gray-300 hover:text-white transition">Polimento Cristalizado</a></li>
-                        <li><a href="#services" class="text-gray-300 hover:text-white transition">Detalhamento Interno</a></li>
-                        <li><a href="#services" class="text-gray-300 hover:text-white transition">Proteção de Pintura</a></li>
-                        <li><a href="#services" class="text-gray-300 hover:text-white transition">Higienização Completa</a></li>
-                    </ul>
-                </div>
-                
-                <div>
-                    <h4 class="text-lg font-semibold mb-4">Links Úteis</h4>
-                    <ul class="space-y-2">
-                        <li><a href="#services" class="text-gray-300 hover:text-white transition">Serviços</a></li>
-                        <li><a href="#about" class="text-gray-300 hover:text-white transition">Sobre Nós</a></li>
-                        <li><a href="#contact" class="text-gray-300 hover:text-white transition">Contato</a></li>
-                    </ul>
-                </div>
-            </div>
-            
-            <div class="border-t border-gray-700 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
-                <p class="text-gray-400">© 2025 L' Brothers. Todos os direitos reservados.</p>
-                <div class="flex space-x-6 mt-4 md:mt-0">
-                    <a href="https://www.instagram.com/lavarapidolbrothers?igsh=ZGRvcHF2ejk1dW5t" 
-                       class="bg-pink-500 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-pink-600 transition"
-                       aria-label="Instagram L'Brothers"
-                       target="_blank" rel="noopener">
-                        <i class="fab fa-instagram" aria-hidden="true"></i>
+                <p class="text-gray-300 mb-4">Excelência em estética automotiva desde 2020.</p>
+                <div class="flex justify-center space-x-4">
+                    <a href="https://www.instagram.com/lavarapidolbrothers" class="bg-pink-500 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-pink-600 transition" target="_blank">
+                        <i class="fab fa-instagram"></i>
                     </a>
                 </div>
+                <p class="text-gray-400 mt-4">© 2025 L' Brothers. Todos os direitos reservados.</p>
             </div>
         </div>
     </footer>
 
     <!-- Modals -->
-    <!-- Login/Register Modal -->
-    <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden" role="dialog" aria-labelledby="loginModalTitle" aria-modal="true">
+    <!-- Login Modal -->
+    <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
             <div class="p-6">
                 <div class="flex justify-between items-center mb-6">
-                    <h3 id="loginModalTitle" class="text-2xl font-bold">Área do Cliente</h3>
-                    <button onclick="closeModal('loginModal')" class="text-gray-500 hover:text-gray-700" aria-label="Fechar modal">
-                        <i class="fas fa-times" aria-hidden="true"></i>
+                    <h3 class="text-2xl font-bold">Área do Cliente</h3>
+                    <button onclick="closeModal('loginModal')" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
                     </button>
                 </div>
                 
-                <div class="flex border-b mb-6" role="tablist">
-                    <button onclick="switchTab('loginTab')" role="tab" aria-selected="true" aria-controls="loginTab" class="tab-button px-4 py-2 font-medium border-b-2 border-blue-500 text-blue-500">Login</button>
-                    <button onclick="switchTab('registerTab')" role="tab" aria-selected="false" aria-controls="registerTab" class="tab-button px-4 py-2 font-medium text-gray-500 hover:text-gray-700">Cadastro</button>
+                <div class="flex border-b mb-6">
+                    <button onclick="switchTab('loginTab')" class="tab-button px-4 py-2 font-medium border-b-2 border-blue-500 text-blue-500">Login</button>
+                    <button onclick="switchTab('registerTab')" class="tab-button px-4 py-2 font-medium text-gray-500">Cadastro</button>
                 </div>
                 
-                <!-- Login Tab -->
-                <div id="loginTab" class="tab-content active" role="tabpanel">
+                <div id="loginTab" class="tab-content active">
                     <div id="login-messages"></div>
                     <form id="login-form">
                         <div class="input-container">
-                            <input type="email" id="login-email" name="email" 
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                                   placeholder=" " required aria-label="Digite seu email">
+                            <input type="email" id="login-email" name="email" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder=" " required>
                             <label for="login-email" class="floating-label">Email</label>
                         </div>
-                        
                         <div class="input-container">
-                            <input type="password" id="login-password" name="password"
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                                   placeholder=" " required aria-label="Digite sua senha">
+                            <input type="password" id="login-password" name="password" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder=" " required>
                             <label for="login-password" class="floating-label">Senha</label>
                         </div>
-                        
-                        <div class="flex justify-between items-center mb-6">
-                            <div class="flex items-center">
-                                <input type="checkbox" id="remember-me" class="mr-2">
-                                <label for="remember-me" class="text-sm text-gray-600">Lembrar de mim</label>
-                            </div>
-                            <button type="button" class="text-sm text-blue-500 hover:text-blue-700">Esqueceu a senha?</button>
-                        </div>
-                        
-                        <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg transition mb-4">Entrar</button>
-                        
-                        <div class="text-center">
-                            <p class="text-gray-600">Não tem uma conta? <button type="button" onclick="switchTab('registerTab')" class="text-blue-500 hover:text-blue-700 font-medium">Cadastre-se</button></p>
-                        </div>
+                        <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg transition mb-4">
+                            <span class="loading spinner mr-2"></span>
+                            Entrar
+                        </button>
                     </form>
                 </div>
                 
-                <!-- Register Tab -->
-                <div id="registerTab" class="tab-content" role="tabpanel">
+                <div id="registerTab" class="tab-content">
                     <div id="register-messages"></div>
                     <form id="register-form">
                         <div class="input-container">
-                            <input type="text" id="register-name" name="name"
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                                   placeholder=" " required aria-label="Digite seu nome completo">
+                            <input type="text" id="register-name" name="name" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder=" " required>
                             <label for="register-name" class="floating-label">Nome Completo</label>
                         </div>
-                        
                         <div class="input-container">
-                            <input type="email" id="register-email" name="email"
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                                   placeholder=" " required aria-label="Digite seu email">
+                            <input type="email" id="register-email" name="email" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder=" " required>
                             <label for="register-email" class="floating-label">Email</label>
                         </div>
-                        
                         <div class="input-container">
-                            <input type="tel" id="register-phone" name="phone"
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                                   placeholder=" " required aria-label="Digite seu telefone">
+                            <input type="tel" id="register-phone" name="phone" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder=" " required>
                             <label for="register-phone" class="floating-label">Telefone</label>
                         </div>
-                        
                         <div class="input-container">
-                            <input type="password" id="register-password" name="password"
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                                   placeholder=" " required aria-label="Digite sua senha">
+                            <input type="password" id="register-password" name="password" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder=" " required>
                             <label for="register-password" class="floating-label">Senha</label>
                         </div>
-                        
-                        <div class="input-container">
-                            <input type="password" id="register-confirm-password" name="confirmPassword"
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                                   placeholder=" " required aria-label="Confirme sua senha">
-                            <label for="register-confirm-password" class="floating-label">Confirmar Senha</label>
-                        </div>
-                        
-                        <div class="flex items-start mb-6">
-                            <input type="checkbox" id="accept-terms" class="mr-2 mt-1" required>
-                            <label for="accept-terms" class="text-sm text-gray-600">Eu concordo com os Termos de Serviço e Política de Privacidade</label>
-                        </div>
-                        
-                        <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg transition mb-4">Cadastrar</button>
-                        
-                        <div class="text-center">
-                            <p class="text-gray-600">Já tem uma conta? <button type="button" onclick="switchTab('loginTab')" class="text-blue-500 hover:text-blue-700 font-medium">Faça login</button></p>
-                        </div>
+                        <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg transition">
+                            <span class="loading spinner mr-2"></span>
+                            Cadastrar
+                        </button>
                     </form>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Services Modal -->
-    <div id="servicesModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden" role="dialog" aria-labelledby="servicesModalTitle" aria-modal="true">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+    <!-- Admin Login Modal -->
+    <div id="adminLoginModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
             <div class="p-6">
                 <div class="flex justify-between items-center mb-6">
-                    <h3 id="servicesModalTitle" class="text-2xl font-bold">Nossos Serviços</h3>
-                    <button onclick="closeModal('servicesModal')" class="text-gray-500 hover:text-gray-700" aria-label="Fechar modal">
-                        <i class="fas fa-times" aria-hidden="true"></i>
+                    <h3 class="text-2xl font-bold">Acesso Administrativo</h3>
+                    <button onclick="closeModal('adminLoginModal')" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
                     </button>
                 </div>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Service 1 -->
-                    <div class="border border-gray-200 rounded-lg p-6 hover:shadow-md transition">
-                        <div class="flex items-start mb-4">
-                            <div class="bg-blue-100 text-blue-500 p-3 rounded-full mr-4" aria-hidden="true">
-                                <i class="fas fa-car-wash text-xl"></i>
-                            </div>
-                            <div>
-                                <h4 class="font-semibold text-lg">Lavagem Premium</h4>
-                                <p class="text-blue-500 font-bold">R$ 120 - R$ 250</p>
-                            </div>
-                        </div>
-                        <p class="text-gray-600 mb-4">Lavagem completa com produtos importados, incluindo limpeza de rodas, painel, vidros e acabamento perfeito.</p>
-                        <button onclick="scheduleService('lavagem-premium')" class="text-blue-500 hover:text-blue-700 font-medium">Agendar este serviço</button>
+                <div id="admin-login-messages"></div>
+                <form id="admin-login-form">
+                    <div class="input-container">
+                        <input type="text" id="admin-username" name="username" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder=" " required>
+                        <label for="admin-username" class="floating-label">Usuário</label>
                     </div>
-                    
-                    <!-- Service 2 -->
-                    <div class="border border-gray-200 rounded-lg p-6 hover:shadow-md transition">
-                        <div class="flex items-start mb-4">
-                            <div class="bg-blue-100 text-blue-500 p-3 rounded-full mr-4" aria-hidden="true">
-                                <i class="fas fa-spray-can text-xl"></i>
-                            </div>
-                            <div>
-                                <h4 class="font-semibold text-lg">Polimento Cristalizado</h4>
-                                <p class="text-blue-500 font-bold">R$ 350 - R$ 600</p>
-                            </div>
-                        </div>
-                        <p class="text-gray-600 mb-4">Remoção de riscos e imperfeições, deixando a pintura como nova com proteção duradoura de até 12 meses.</p>
-                        <button onclick="scheduleService('polimento-cristalizado')" class="text-blue-500 hover:text-blue-700 font-medium">Agendar este serviço</button>
+                    <div class="input-container">
+                        <input type="password" id="admin-password" name="password" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder=" " required>
+                        <label for="admin-password" class="floating-label">Senha</label>
                     </div>
-                    
-                    <!-- Service 3 -->
-                    <div class="border border-gray-200 rounded-lg p-6 hover:shadow-md transition">
-                        <div class="flex items-start mb-4">
-                            <div class="bg-blue-100 text-blue-500 p-3 rounded-full mr-4" aria-hidden="true">
-                                <i class="fas fa-vacuum text-xl"></i>
-                            </div>
-                            <div>
-                                <h4 class="font-semibold text-lg">Detalhamento Interno</h4>
-                                <p class="text-blue-500 font-bold">R$ 250 - R$ 400</p>
-                            </div>
-                        </div>
-                        <p class="text-gray-600 mb-4">Limpeza profunda do interior com higienização de estofados, painel, console, teto e todos os componentes.</p>
-                        <button onclick="scheduleService('detalhamento-interno')" class="text-blue-500 hover:text-blue-700 font-medium">Agendar este serviço</button>
-                    </div>
-                    
-                    <!-- Service 4 -->
-                    <div class="border border-gray-200 rounded-lg p-6 hover:shadow-md transition">
-                        <div class="flex items-start mb-4">
-                            <div class="bg-blue-100 text-blue-500 p-3 rounded-full mr-4" aria-hidden="true">
-                                <i class="fas fa-shield-alt text-xl"></i>
-                            </div>
-                            <div>
-                                <h4 class="font-semibold text-lg">Proteção de Pintura</h4>
-                                <p class="text-blue-500 font-bold">R$ 500 - R$ 1.200</p>
-                            </div>
-                        </div>
-                        <p class="text-gray-600 mb-4">Aplicação de cerâmica ou polímero para proteger a pintura contra raios UV, chuva ácida e contaminação.</p>
-                        <button onclick="scheduleService('protecao-pintura')" class="text-blue-500 hover:text-blue-700 font-medium">Agendar este serviço</button>
-                    </div>
-                    
-                    <!-- Service 5 -->
-                    <div class="border border-gray-200 rounded-lg p-6 hover:shadow-md transition">
-                        <div class="flex items-start mb-4">
-                            <div class="bg-blue-100 text-blue-500 p-3 rounded-full mr-4" aria-hidden="true">
-                                <i class="fas fa-wind text-xl"></i>
-                            </div>
-                            <div>
-                                <h4 class="font-semibold text-lg">Higienização de Ar Condicionado</h4>
-                                <p class="text-blue-500 font-bold">R$ 150 - R$ 250</p>
-                            </div>
-                        </div>
-                        <p class="text-gray-600 mb-4">Limpeza completa do sistema de ar condicionado, eliminando odores e bactérias para melhor qualidade do ar.</p>
-                        <button onclick="scheduleService('higienizacao-ar')" class="text-blue-500 hover:text-blue-700 font-medium">Agendar este serviço</button>
-                    </div>
-                    
-                    <!-- Service 6 -->
-                    <div class="border border-gray-200 rounded-lg p-6 hover:shadow-md transition">
-                        <div class="flex items-start mb-4">
-                            <div class="bg-blue-100 text-blue-500 p-3 rounded-full mr-4" aria-hidden="true">
-                                <i class="fas fa-tint text-xl"></i>
-                            </div>
-                            <div>
-                                <h4 class="font-semibold text-lg">Hidratação de Couro</h4>
-                                <p class="text-blue-500 font-bold">R$ 180 - R$ 300</p>
-                            </div>
-                        </div>
-                        <p class="text-gray-600 mb-4">Hidratação e proteção de bancos e componentes em couro para evitar ressecamento e rachaduras.</p>
-                        <button onclick="scheduleService('hidratacao-couro')" class="text-blue-500 hover:text-blue-700 font-medium">Agendar este serviço</button>
-                    </div>
-                </div>
+                    <button type="submit" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-medium py-3 px-6 rounded-lg transition">
+                        <span class="loading spinner mr-2"></span>
+                        Entrar como Admin
+                    </button>
+                </form>
             </div>
         </div>
     </div>
 
     <!-- Schedule Modal -->
-    <div id="scheduleModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden" role="dialog" aria-labelledby="scheduleModalTitle" aria-modal="true">
+    <div id="scheduleModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
             <div class="p-6">
                 <div class="flex justify-between items-center mb-6">
-                    <h3 id="scheduleModalTitle" class="text-2xl font-bold">Agendar Serviço</h3>
-                    <button onclick="closeModal('scheduleModal')" class="text-gray-500 hover:text-gray-700" aria-label="Fechar modal">
-                        <i class="fas fa-times" aria-hidden="true"></i>
+                    <h3 class="text-2xl font-bold">Agendar Serviço</h3>
+                    <button onclick="closeModal('scheduleModal')" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
                     </button>
                 </div>
                 
                 <div id="schedule-messages"></div>
                 <form id="schedule-form">
-                    <div class="mb-6">
-                        <label for="service-select" class="block font-semibold mb-2">Selecione o serviço:</label>
-                        <select id="service-select" name="service" 
-                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
+                    <div class="input-container">
+                        <select id="service-select" name="service" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
                             <option value="">Selecione um serviço</option>
-                            <option value="lavagem-premium">Lavagem Premium</option>
-                            <option value="polimento-cristalizado">Polimento Cristalizado</option>
-                            <option value="detalhamento-interno">Detalhamento Interno</option>
-                            <option value="protecao-pintura">Proteção de Pintura</option>
-                            <option value="higienizacao-ar">Higienização de Ar Condicionado</option>
-                            <option value="hidratacao-couro">Hidratação de Couro</option>
+                            <option value="lavagem-premium">Lavagem Premium (R$ 120-250)</option>
+                            <option value="polimento-cristalizado">Polimento Cristalizado (R$ 350-600)</option>
+                            <option value="detalhamento-interno">Detalhamento Interno (R$ 250-400)</option>
+                            <option value="protecao-pintura">Proteção de Pintura (R$ 500-1200)</option>
+                            <option value="higienizacao-ar">Higienização AR (R$ 150-250)</option>
                         </select>
                     </div>
                     
-                    <div class="mb-6">
-                        <label for="vehicle-select" class="block font-semibold mb-2">Informações do veículo:</label>
-                        <div class="input-container">
-                            <input type="text" id="vehicle-info" name="vehicle" 
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                                   placeholder=" " required>
-                            <label for="vehicle-info" class="floating-label">Marca, Modelo e Ano (ex: Honda Civic 2020)</label>
-                        </div>
+                    <div class="input-container">
+                        <input type="text" id="vehicle-info" name="vehicle" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder=" " required>
+                        <label for="vehicle-info" class="floating-label">Veículo (Marca, Modelo, Ano)</label>
                     </div>
                     
-                    <div class="mb-6">
-                        <label for="schedule-date" class="block font-semibold mb-2">Selecione a data:</label>
-                        <input type="date" id="schedule-date" name="date"
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
+                    <div class="input-container">
+                        <input type="date" id="schedule-date" name="date" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
                     </div>
                     
-                    <div class="mb-6">
-                        <label for="schedule-time" class="block font-semibold mb-2">Selecione o horário:</label>
-                        <select id="schedule-time" name="time"
-                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
-                            <option value="">Selecione um horário</option>
+                    <div class="input-container">
+                        <select id="schedule-time" name="time" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                            <option value="">Selecione horário</option>
                             <option value="08:00">08:00</option>
                             <option value="09:00">09:00</option>
                             <option value="10:00">10:00</option>
@@ -735,17 +600,13 @@
                         </select>
                     </div>
                     
-                    <div class="mb-6">
-                        <label for="schedule-notes" class="block font-semibold mb-2">Observações (opcional):</label>
-                        <div class="input-container">
-                            <textarea id="schedule-notes" name="notes" rows="3"
-                                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                                      placeholder=" "></textarea>
-                            <label for="schedule-notes" class="floating-label">Alguma observação especial?</label>
-                        </div>
+                    <div class="input-container">
+                        <textarea id="schedule-notes" name="notes" rows="3" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder=" "></textarea>
+                        <label for="schedule-notes" class="floating-label">Observações (opcional)</label>
                     </div>
                     
                     <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg transition">
+                        <span class="loading spinner mr-2"></span>
                         Confirmar Agendamento
                     </button>
                 </form>
@@ -753,161 +614,606 @@
         </div>
     </div>
 
-    <!-- Success Modal -->
-    <div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden" role="dialog" aria-modal="true">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-8 text-center">
-            <div class="text-green-500 text-6xl mb-4" aria-hidden="true">
-                <i class="fas fa-check-circle"></i>
+    <!-- Services Modal -->
+    <div id="servicesModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-bold">Nossos Serviços</h3>
+                    <button onclick="closeModal('servicesModal')" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="border rounded-lg p-6">
+                        <h4 class="font-semibold text-lg mb-2">Lavagem Premium</h4>
+                        <p class="text-blue-500 font-bold mb-2">R$ 120 - R$ 250</p>
+                        <p class="text-gray-600 mb-4">Lavagem completa com produtos importados, limpeza de rodas, vidros e acabamento perfeito.</p>
+                        <button onclick="scheduleService('lavagem-premium')" class="text-blue-500 hover:text-blue-700 font-medium">Agendar</button>
+                    </div>
+                    
+                    <div class="border rounded-lg p-6">
+                        <h4 class="font-semibold text-lg mb-2">Polimento Cristalizado</h4>
+                        <p class="text-blue-500 font-bold mb-2">R$ 350 - R$ 600</p>
+                        <p class="text-gray-600 mb-4">Remoção de riscos, proteção duradoura até 12 meses.</p>
+                        <button onclick="scheduleService('polimento-cristalizado')" class="text-blue-500 hover:text-blue-700 font-medium">Agendar</button>
+                    </div>
+                    
+                    <div class="border rounded-lg p-6">
+                        <h4 class="font-semibold text-lg mb-2">Detalhamento Interno</h4>
+                        <p class="text-blue-500 font-bold mb-2">R$ 250 - R$ 400</p>
+                        <p class="text-gray-600 mb-4">Limpeza profunda, higienização de estofados e componentes.</p>
+                        <button onclick="scheduleService('detalhamento-interno')" class="text-blue-500 hover:text-blue-700 font-medium">Agendar</button>
+                    </div>
+                    
+                    <div class="border rounded-lg p-6">
+                        <h4 class="font-semibold text-lg mb-2">Proteção de Pintura</h4>
+                        <p class="text-blue-500 font-bold mb-2">R$ 500 - R$ 1.200</p>
+                        <p class="text-gray-600 mb-4">Aplicação de cerâmica para proteção contra UV e contaminação.</p>
+                        <button onclick="scheduleService('protecao-pintura')" class="text-blue-500 hover:text-blue-700 font-medium">Agendar</button>
+                    </div>
+                </div>
             </div>
-            <h3 class="text-2xl font-bold mb-2">Sucesso!</h3>
-            <p id="success-message" class="text-gray-600 mb-6">Operação realizada com sucesso!</p>
-            <button onclick="closeModal('successModal')" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-6 rounded-lg transition">OK</button>
         </div>
     </div>
 
-    <!-- Admin Access Script -->
-    <script>
-        function checkAccess() {
-            const username = prompt("Usuário:");
-            const password = prompt("Senha:");
+    <!-- Success Modal -->
+    <div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-8 text-center">
+            <i class="fas fa-check-circle text-green-500 text-6xl mb-4"></i>
+            <h3 class="text-2xl font-bold mb-2">Sucesso!</h3>
+            <p id="success-message" class="text-gray-600 mb-6">Operação realizada com sucesso!</p>
+            <button onclick="closeModal('successModal')" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-6 rounded-lg">OK</button>
+        </div>
+    </div>
 
-            if (username === "ADMIN" && password === "ADMIN") {
-                window.location.href = "https://tiagoguimaraesunivesp.github.io/controle.estetica/";
-            } else {
-                alert("Usuário ou senha incorretos!");
-            }
-        }
-    </script>
-
-    <!-- Main JavaScript -->
     <script>
         // ========================================
-        // DATA MANAGEMENT SYSTEM (JSON Local)
+        // SUPABASE CONFIGURATION
         // ========================================
         
-        // Simple database using memory (will be enhanced with APIs later)
-        let appData = {
-            users: JSON.parse(localStorage.getItem('lbrothers_users') || '[]'),
-            appointments: JSON.parse(localStorage.getItem('lbrothers_appointments') || '[]'),
-            contacts: JSON.parse(localStorage.getItem('lbrothers_contacts') || '[]'),
-            currentUser: JSON.parse(localStorage.getItem('lbrothers_current_user') || 'null')
+        // Configuração do Supabase
+        const SUPABASE_URL = 'https://ulyxmbzdwntddcesjsnw.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVseXhtYnpkd250ZGRjZXNqc253Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc4ODIyMzEsImV4cCI6MjA3MzQ1ODIzMX0.Q3OmlDne3ZoU1QJHOzr_MD6ho4FaRynGJoaz_9pZ3UM';
+        
+        // Inicialização do Supabase
+        let supabase = null;
+        
+        try {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        } catch (error) {
+            console.warn('Supabase não configurado, usando armazenamento local');
+        }
+
+        // ========================================
+        // DATA STORAGE LAYER
+        // ========================================
+        
+        class DatabaseManager {
+            constructor() {
+                this.isSupabaseEnabled = !!supabase;
+                this.tables = {
+                    users: 'users',
+                    appointments: 'appointments',
+                    contacts: 'contacts'
+                };
+            }
+
+            async store(table, data) {
+                if (this.isSupabaseEnabled) {
+                    try {
+                        const { data: result, error } = await supabase
+                            .from(table)
+                            .insert([data])
+                            .select()
+                            .single();
+                        
+                        if (error) throw error;
+                        return { success: true, data: result };
+                    } catch (error) {
+                        console.error(`Erro ao salvar em ${table}:`, error);
+                        return this.storeLocal(table, data);
+                    }
+                } else {
+                    return this.storeLocal(table, data);
+                }
+            }
+
+            async fetch(table, filters = {}) {
+                if (this.isSupabaseEnabled) {
+                    try {
+                        let query = supabase.from(table).select('*');
+                        
+                        Object.entries(filters).forEach(([key, value]) => {
+                            query = query.eq(key, value);
+                        });
+                        
+                        const { data, error } = await query;
+                        if (error) throw error;
+                        return { success: true, data };
+                    } catch (error) {
+                        console.error(`Erro ao buscar ${table}:`, error);
+                        return this.fetchLocal(table, filters);
+                    }
+                } else {
+                    return this.fetchLocal(table, filters);
+                }
+            }
+
+            async update(table, id, updates) {
+                if (this.isSupabaseEnabled) {
+                    try {
+                        const { data, error } = await supabase
+                            .from(table)
+                            .update(updates)
+                            .eq('id', id)
+                            .select()
+                            .single();
+                        
+                        if (error) throw error;
+                        return { success: true, data };
+                    } catch (error) {
+                        console.error(`Erro ao atualizar ${table}:`, error);
+                        return this.updateLocal(table, id, updates);
+                    }
+                } else {
+                    return this.updateLocal(table, id, updates);
+                }
+            }
+
+            storeLocal(table, data) {
+                const items = JSON.parse(localStorage.getItem(`lbrothers_${table}`) || '[]');
+                const newItem = { ...data, id: this.generateId(), created_at: new Date().toISOString() };
+                items.push(newItem);
+                localStorage.setItem(`lbrothers_${table}`, JSON.stringify(items));
+                return { success: true, data: newItem };
+            }
+
+            fetchLocal(table, filters = {}) {
+                const items = JSON.parse(localStorage.getItem(`lbrothers_${table}`) || '[]');
+                let filtered = items;
+                
+                Object.entries(filters).forEach(([key, value]) => {
+                    filtered = filtered.filter(item => item[key] === value);
+                });
+                
+                return { success: true, data: filtered };
+            }
+
+            updateLocal(table, id, updates) {
+                const items = JSON.parse(localStorage.getItem(`lbrothers_${table}`) || '[]');
+                const index = items.findIndex(item => item.id === id);
+                
+                if (index !== -1) {
+                    items[index] = { ...items[index], ...updates, updated_at: new Date().toISOString() };
+                    localStorage.setItem(`lbrothers_${table}`, JSON.stringify(items));
+                    return { success: true, data: items[index] };
+                }
+                
+                return { success: false, error: 'Item não encontrado' };
+            }
+
+            generateId() {
+                return 'id_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+            }
+        }
+
+        const db = new DatabaseManager();
+
+        // ========================================
+        // APPLICATION STATE
+        // ========================================
+        
+        let appState = {
+            currentUser: JSON.parse(localStorage.getItem('lbrothers_current_user') || 'null'),
+            isAdmin: JSON.parse(localStorage.getItem('lbrothers_is_admin') || 'false'),
+            appointments: [],
+            analytics: {
+                totalAppointments: 0,
+                todayAppointments: 0,
+                totalUsers: 0,
+                totalContacts: 0
+            }
         };
-
-        // Save data to localStorage
-        function saveData() {
-            localStorage.setItem('lbrothers_users', JSON.stringify(appData.users));
-            localStorage.setItem('lbrothers_appointments', JSON.stringify(appData.appointments));
-            localStorage.setItem('lbrothers_contacts', JSON.stringify(appData.contacts));
-            localStorage.setItem('lbrothers_current_user', JSON.stringify(appData.currentUser));
-        }
-
-        // Generate unique ID
-        function generateId() {
-            return 'id_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
-        }
-
-        // Format date for display
-        function formatDate(dateString) {
-            const date = new Date(dateString);
-            return date.toLocaleDateString('pt-BR');
-        }
 
         // ========================================
         // USER MANAGEMENT
         // ========================================
         
-        function registerUser(userData) {
-            // Check if email already exists
-            const existingUser = appData.users.find(user => user.email === userData.email);
-            if (existingUser) {
-                return { success: false, message: 'Email já cadastrado!' };
+        async function registerUser(userData) {
+            try {
+                const existingUsers = await db.fetch('users', { email: userData.email });
+                
+                if (existingUsers.data.length > 0) {
+                    return { success: false, message: 'Email já cadastrado!' };
+                }
+
+                const hashedPassword = btoa(userData.password);
+                
+                const newUser = {
+                    name: userData.name,
+                    email: userData.email,
+                    phone: userData.phone,
+                    password: hashedPassword,
+                    role: 'user'
+                };
+
+                const result = await db.store('users', newUser);
+                
+                if (result.success) {
+                    return { success: true, message: 'Cadastro realizado com sucesso!' };
+                }
+                
+                return { success: false, message: 'Erro ao criar conta. Tente novamente.' };
+                
+            } catch (error) {
+                console.error('Erro no registro:', error);
+                return { success: false, message: 'Erro interno. Tente novamente.' };
             }
+        }
 
-            // Create new user
-            const newUser = {
-                id: generateId(),
-                name: userData.name,
-                email: userData.email,
-                phone: userData.phone,
-                password: userData.password, // In real app, this would be hashed
-                createdAt: new Date().toISOString()
-            };
+        async function loginUser(email, password) {
+            try {
+                const hashedPassword = btoa(password);
+                const users = await db.fetch('users', { email, password: hashedPassword });
+                
+                if (users.data.length > 0) {
+                    const user = users.data[0];
+                    appState.currentUser = {
+                        id: user.id,
+                        name: user.name,
+                        email: user.email,
+                        phone: user.phone,
+                        role: user.role
+                    };
+                    
+                    localStorage.setItem('lbrothers_current_user', JSON.stringify(appState.currentUser));
+                    
+                    return { success: true, user: appState.currentUser };
+                }
+                
+                return { success: false, message: 'Email ou senha incorretos!' };
+                
+            } catch (error) {
+                console.error('Erro no login:', error);
+                return { success: false, message: 'Erro interno. Tente novamente.' };
+            }
+        }
 
-            appData.users.push(newUser);
-            saveData();
+        function logout() {
+            appState.currentUser = null;
+            appState.isAdmin = false;
+            localStorage.removeItem('lbrothers_current_user');
+            localStorage.removeItem('lbrothers_is_admin');
+            updateUserInterface();
             
-            return { success: true, message: 'Cadastro realizado com sucesso!' };
-        }
-
-        function loginUser(email, password) {
-            const user = appData.users.find(user => user.email === email && user.password === password);
-            if (user) {
-                appData.currentUser = { id: user.id, name: user.name, email: user.email };
-                saveData();
-                return { success: true, user: appData.currentUser };
-            }
-            return { success: false, message: 'Email ou senha incorretos!' };
-        }
-
-        function logoutUser() {
-            appData.currentUser = null;
-            saveData();
+            const userDashboard = document.getElementById('userDashboard');
+            if (userDashboard) userDashboard.classList.add('hidden');
+            const adminPanel = document.getElementById('adminPanel');
+            if (adminPanel) adminPanel.classList.remove('active');
         }
 
         function isLoggedIn() {
-            return appData.currentUser !== null;
+            return appState.currentUser !== null;
         }
 
         // ========================================
         // APPOINTMENT MANAGEMENT
         // ========================================
         
-        function createAppointment(appointmentData) {
+        async function createAppointment(appointmentData) {
             if (!isLoggedIn()) {
                 return { success: false, message: 'Você precisa estar logado para agendar!' };
             }
 
-            const appointment = {
-                id: generateId(),
-                userId: appData.currentUser.id,
-                service: appointmentData.service,
-                vehicle: appointmentData.vehicle,
-                date: appointmentData.date,
-                time: appointmentData.time,
-                notes: appointmentData.notes || '',
-                status: 'agendado',
-                createdAt: new Date().toISOString()
-            };
+            try {
+                const appointment = {
+                    user_id: appState.currentUser.id,
+                    user_name: appState.currentUser.name,
+                    user_phone: appState.currentUser.phone,
+                    service: appointmentData.service,
+                    vehicle: appointmentData.vehicle,
+                    date: appointmentData.date,
+                    time: appointmentData.time,
+                    notes: appointmentData.notes || '',
+                    status: 'agendado'
+                };
 
-            appData.appointments.push(appointment);
-            saveData();
-            
-            return { success: true, message: 'Agendamento confirmado com sucesso!', appointment };
+                const result = await db.store('appointments', appointment);
+                
+                if (result.success) {
+                    await loadUserAppointments();
+                    return { success: true, message: 'Agendamento confirmado com sucesso!', appointment: result.data };
+                }
+                
+                return { success: false, message: 'Erro ao criar agendamento. Tente novamente.' };
+                
+            } catch (error) {
+                console.error('Erro ao criar agendamento:', error);
+                return { success: false, message: 'Erro interno. Tente novamente.' };
+            }
         }
 
-        function getUserAppointments() {
-            if (!isLoggedIn()) return [];
-            return appData.appointments.filter(app => app.userId === appData.currentUser.id);
+        async function loadUserAppointments() {
+            if (!isLoggedIn()) return;
+            
+            try {
+                const result = await db.fetch('appointments', { user_id: appState.currentUser.id });
+                appState.appointments = result.data || [];
+                displayUserAppointments();
+            } catch (error) {
+                console.error('Erro ao carregar agendamentos:', error);
+            }
+        }
+
+        async function updateAppointmentStatus(appointmentId, newStatus) {
+            try {
+                const result = await db.update('appointments', appointmentId, { status: newStatus });
+                
+                if (result.success) {
+                    await loadAdminData();
+                    await loadUserAppointments();
+                }
+                
+                return result;
+            } catch (error) {
+                console.error('Erro ao atualizar status:', error);
+                return { success: false, error };
+            }
         }
 
         // ========================================
         // CONTACT MANAGEMENT
         // ========================================
         
-        function saveContact(contactData) {
-            const contact = {
-                id: generateId(),
-                name: contactData.name,
-                email: contactData.email,
-                phone: contactData.phone,
-                message: contactData.message,
-                createdAt: new Date().toISOString()
+        async function saveContact(contactData) {
+            try {
+                const contact = {
+                    name: contactData.name,
+                    email: contactData.email,
+                    phone: contactData.phone || '',
+                    message: contactData.message
+                };
+
+                const result = await db.store('contacts', contact);
+                
+                if (result.success) {
+                    return { success: true, message: 'Mensagem enviada com sucesso!' };
+                }
+                
+                return { success: false, message: 'Erro ao enviar mensagem. Tente novamente.' };
+                
+            } catch (error) {
+                console.error('Erro ao salvar contato:', error);
+                return { success: false, message: 'Erro interno. Tente novamente.' };
+            }
+        }
+
+        // ========================================
+        // ADMIN FUNCTIONS
+        // ========================================
+        
+        function checkAdminAccess(username, password) {
+            if (username === 'ADMIN' && password === 'ADMIN') {
+                appState.isAdmin = true;
+                localStorage.setItem('lbrothers_is_admin', 'true');
+                return true;
+            }
+            return false;
+        }
+
+        async function loadAdminData() {
+            if (!appState.isAdmin) return;
+            
+            try {
+                const [appointmentsResult, usersResult, contactsResult] = await Promise.all([
+                    db.fetch('appointments'),
+                    db.fetch('users'),
+                    db.fetch('contacts')
+                ]);
+                
+                const appointments = appointmentsResult.data || [];
+                const users = usersResult.data || [];
+                const contacts = contactsResult.data || [];
+                
+                const today = new Date().toISOString().split('T')[0];
+                appState.analytics = {
+                    totalAppointments: appointments.length,
+                    todayAppointments: appointments.filter(apt => apt.date === today).length,
+                    totalUsers: users.filter(user => user.role !== 'admin').length,
+                    totalContacts: contacts.length
+                };
+                
+                updateAdminDashboard(appointments, contacts);
+                updateAnalytics(appointments);
+                
+            } catch (error) {
+                console.error('Erro ao carregar dados admin:', error);
+            }
+        }
+
+        function updateAdminDashboard(appointments, contacts) {
+            const elements = {
+                'total-appointments': appState.analytics.totalAppointments,
+                'today-appointments': appState.analytics.todayAppointments,
+                'total-users': appState.analytics.totalUsers,
+                'total-contacts': appState.analytics.totalContacts
             };
 
-            appData.contacts.push(contact);
-            saveData();
+            Object.entries(elements).forEach(([id, value]) => {
+                const element = document.getElementById(id);
+                if (element) element.textContent = value;
+            });
             
-            return { success: true, message: 'Mensagem enviada com sucesso!' };
+            const appointmentsContainer = document.getElementById('admin-appointments');
+            if (appointmentsContainer) {
+                appointmentsContainer.innerHTML = `
+                    <table class="w-full bg-white rounded-lg overflow-hidden">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-2 text-left">Cliente</th>
+                                <th class="px-4 py-2 text-left">Serviço</th>
+                                <th class="px-4 py-2 text-left">Data</th>
+                                <th class="px-4 py-2 text-left">Horário</th>
+                                <th class="px-4 py-2 text-left">Status</th>
+                                <th class="px-4 py-2 text-left">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${appointments.map(apt => `
+                                <tr class="border-b">
+                                    <td class="px-4 py-2">${apt.user_name || 'N/A'}</td>
+                                    <td class="px-4 py-2">${getServiceName(apt.service)}</td>
+                                    <td class="px-4 py-2">${formatDate(apt.date)}</td>
+                                    <td class="px-4 py-2">${apt.time}</td>
+                                    <td class="px-4 py-2">
+                                        <span class="status-badge status-${apt.status}">${apt.status}</span>
+                                    </td>
+                                    <td class="px-4 py-2">
+                                        <select onchange="updateAppointmentStatus('${apt.id}', this.value)" class="border rounded px-2 py-1">
+                                            <option value="agendado" ${apt.status === 'agendado' ? 'selected' : ''}>Agendado</option>
+                                            <option value="confirmado" ${apt.status === 'confirmado' ? 'selected' : ''}>Confirmado</option>
+                                            <option value="concluido" ${apt.status === 'concluido' ? 'selected' : ''}>Concluído</option>
+                                            <option value="cancelado" ${apt.status === 'cancelado' ? 'selected' : ''}>Cancelado</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            }
+            
+            const contactsContainer = document.getElementById('admin-contacts');
+            if (contactsContainer) {
+                contactsContainer.innerHTML = contacts.map(contact => `
+                    <div class="bg-white p-4 rounded-lg border">
+                        <div class="flex justify-between items-start mb-2">
+                            <h4 class="font-semibold">${contact.name}</h4>
+                            <span class="text-sm text-gray-500">${formatDate(contact.created_at)}</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-2">${contact.email} | ${contact.phone}</p>
+                        <p class="text-gray-800">${contact.message}</p>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // ========================================
+        // ANALYTICS & CHARTS
+        // ========================================
+        
+        function updateAnalytics(appointments) {
+            const serviceCount = {};
+            appointments.forEach(apt => {
+                serviceCount[apt.service] = (serviceCount[apt.service] || 0) + 1;
+            });
+            
+            createServicesChart(serviceCount);
+            
+            const monthlyCount = {};
+            appointments.forEach(apt => {
+                const month = apt.date ? apt.date.substring(0, 7) : '2025-01';
+                monthlyCount[month] = (monthlyCount[month] || 0) + 1;
+            });
+            
+            createMonthlyChart(monthlyCount);
+            updatePublicAnalytics();
+        }
+
+        function createServicesChart(serviceCount) {
+            const ctx = document.getElementById('servicesChart');
+            if (!ctx || !window.Chart) return;
+            
+            const serviceNames = {
+                'lavagem-premium': 'Lavagem Premium',
+                'polimento-cristalizado': 'Polimento',
+                'detalhamento-interno': 'Detalhamento',
+                'protecao-pintura': 'Proteção',
+                'higienizacao-ar': 'Higienização'
+            };
+            
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(serviceCount).map(key => serviceNames[key] || key),
+                    datasets: [{
+                        data: Object.values(serviceCount),
+                        backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        function createMonthlyChart(monthlyCount) {
+            const ctx = document.getElementById('monthlyChart');
+            if (!ctx || !window.Chart) return;
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Object.keys(monthlyCount),
+                    datasets: [{
+                        label: 'Agendamentos',
+                        data: Object.values(monthlyCount),
+                        borderColor: '#3B82F6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function updatePublicAnalytics() {
+            const ctx = document.getElementById('publicTrendsChart');
+            if (!ctx || !window.Chart) return;
+            
+            const trendData = {
+                labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'],
+                datasets: [{
+                    label: 'Satisfação do Cliente',
+                    data: [4.5, 4.6, 4.7, 4.8, 4.9, 4.9],
+                    borderColor: '#10B981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    tension: 0.4
+                }]
+            };
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: trendData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            min: 4,
+                            max: 5
+                        }
+                    }
+                }
+            });
         }
 
         // ========================================
@@ -916,17 +1222,45 @@
         
         function showMessage(containerId, message, type = 'success') {
             const container = document.getElementById(containerId);
+            if (!container) return;
+            
             const className = type === 'success' ? 'success-message' : 'error-message';
             container.innerHTML = `<div class="${className}">${message}</div>`;
             
-            // Remove message after 5 seconds
             setTimeout(() => {
                 container.innerHTML = '';
             }, 5000);
         }
 
+        function showLoading(buttonElement, show = true) {
+            if (!buttonElement) return;
+            const spinner = buttonElement.querySelector('.loading');
+            if (spinner) {
+                spinner.classList.toggle('active', show);
+            }
+            buttonElement.disabled = show;
+        }
+
         function clearForm(formId) {
-            document.getElementById(formId).reset();
+            const form = document.getElementById(formId);
+            if (form) form.reset();
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('pt-BR');
+        }
+
+        function getServiceName(service) {
+            const serviceNames = {
+                'lavagem-premium': 'Lavagem Premium',
+                'polimento-cristalizado': 'Polimento Cristalizado',
+                'detalhamento-interno': 'Detalhamento Interno',
+                'protecao-pintura': 'Proteção de Pintura',
+                'higienizacao-ar': 'Higienização de Ar'
+            };
+            return serviceNames[service] || service;
         }
 
         // ========================================
@@ -935,48 +1269,46 @@
         
         function toggleMobileMenu() {
             const menu = document.getElementById('mobileMenu');
-            const button = document.querySelector('[onclick="toggleMobileMenu()"]');
-            const isHidden = menu.classList.contains('hidden');
-            
-            menu.classList.toggle('hidden');
-            button.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+            if (menu) {
+                menu.classList.toggle('hidden');
+            }
         }
 
         function openModal(modalId) {
-            document.getElementById(modalId).classList.remove('hidden');
-            document.body.classList.add('overflow-hidden');
-            
-            // Focus management for accessibility
             const modal = document.getElementById(modalId);
-            const firstFocusable = modal.querySelector('button, input, select, textarea');
-            if (firstFocusable) firstFocusable.focus();
+            if (modal) {
+                modal.classList.remove('hidden');
+                document.body.classList.add('overflow-hidden');
+            }
         }
 
         function closeModal(modalId) {
-            document.getElementById(modalId).classList.add('hidden');
-            document.body.classList.remove('overflow-hidden');
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
+            }
         }
 
         function switchTab(tabId) {
-            // Hide all tab contents
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
             });
 
-            // Show selected tab
-            document.getElementById(tabId).classList.add('active');
+            const selectedTab = document.getElementById(tabId);
+            if (selectedTab) {
+                selectedTab.classList.add('active');
+            }
 
-            // Update tab buttons
             document.querySelectorAll('.tab-button').forEach(button => {
                 button.classList.remove('border-b-2', 'border-blue-500', 'text-blue-500');
                 button.classList.add('text-gray-500');
-                button.setAttribute('aria-selected', 'false');
             });
 
-            // Highlight active tab button
-            event.currentTarget.classList.add('border-b-2', 'border-blue-500', 'text-blue-500');
-            event.currentTarget.classList.remove('text-gray-500');
-            event.currentTarget.setAttribute('aria-selected', 'true');
+            if (event && event.currentTarget) {
+                event.currentTarget.classList.add('border-b-2', 'border-blue-500', 'text-blue-500');
+                event.currentTarget.classList.remove('text-gray-500');
+            }
         }
 
         // ========================================
@@ -991,9 +1323,81 @@
             
             openModal('scheduleModal');
             
-            // Pre-select service if provided
             if (serviceType) {
-                document.getElementById('service-select').value = serviceType;
+                const serviceSelect = document.getElementById('service-select');
+                if (serviceSelect) {
+                    serviceSelect.value = serviceType;
+                }
+            }
+        }
+
+        // ========================================
+        // USER INTERFACE UPDATES
+        // ========================================
+        
+        function updateUserInterface() {
+            const loggedOutMenu = document.getElementById('user-menu-logged-out');
+            const loggedInMenu = document.getElementById('user-menu-logged-in');
+            const userName = document.getElementById('user-name');
+            
+            if (isLoggedIn()) {
+                if (loggedOutMenu) loggedOutMenu.classList.add('hidden');
+                if (loggedInMenu) loggedInMenu.classList.remove('hidden');
+                if (userName) userName.textContent = `Olá, ${appState.currentUser.name}`;
+                
+                loadUserAppointments();
+            } else {
+                if (loggedOutMenu) loggedOutMenu.classList.remove('hidden');
+                if (loggedInMenu) loggedInMenu.classList.add('hidden');
+                if (userName) userName.textContent = '';
+            }
+        }
+
+        function toggleUserDashboard() {
+            const dashboard = document.getElementById('userDashboard');
+            if (dashboard) {
+                dashboard.classList.toggle('hidden');
+                if (!dashboard.classList.contains('hidden')) {
+                    loadUserAppointments();
+                }
+            }
+        }
+
+        function toggleAdminPanel() {
+            const adminPanel = document.getElementById('adminPanel');
+            if (adminPanel) {
+                adminPanel.classList.toggle('active');
+                if (adminPanel.classList.contains('active')) {
+                    loadAdminData();
+                }
+            }
+        }
+
+        function displayUserAppointments() {
+            const container = document.getElementById('user-appointments');
+            if (!container) return;
+            
+            if (appState.appointments.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 col-span-full text-center">Nenhum agendamento encontrado.</p>';
+                return;
+            }
+            
+            container.innerHTML = appState.appointments.map(apt => `
+                <div class="bg-white p-4 rounded-lg shadow-md border-l-4 border-blue-500">
+                    <h4 class="font-semibold text-lg mb-2">${getServiceName(apt.service)}</h4>
+                    <div class="text-sm text-gray-600 space-y-1">
+                        <p><i class="fas fa-calendar mr-2"></i>${formatDate(apt.date)} às ${apt.time}</p>
+                        <p><i class="fas fa-car mr-2"></i>${apt.vehicle}</p>
+                        <p><i class="fas fa-info-circle mr-2"></i>Status: <span class="status-badge status-${apt.status}">${apt.status}</span></p>
+                        ${apt.notes ? `<p><i class="fas fa-comment mr-2"></i>${apt.notes}</p>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function refreshAppointments() {
+            if (appState.isAdmin) {
+                await loadAdminData();
             }
         }
 
@@ -1001,9 +1405,7 @@
         // FORM HANDLERS
         // ========================================
         
-        // Initialize forms when page loads
         document.addEventListener('DOMContentLoaded', function() {
-            // Set minimum date to today
             const today = new Date().toISOString().split('T')[0];
             const dateInput = document.getElementById('schedule-date');
             if (dateInput) {
@@ -1011,341 +1413,263 @@
             }
 
             // Login form
-            document.getElementById('login-form').addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                const formData = new FormData(this);
-                const email = formData.get('email');
-                const password = formData.get('password');
-                
-                const result = loginUser(email, password);
-                
-                if (result.success) {
-                    showMessage('login-messages', 'Login realizado com sucesso!', 'success');
-                    setTimeout(() => {
-                        closeModal('loginModal');
-                        clearForm('login-form');
-                        updateUserInterface();
-                    }, 1000);
-                } else {
-                    showMessage('login-messages', result.message, 'error');
-                }
-            });
+            const loginForm = document.getElementById('login-form');
+            if (loginForm) {
+                loginForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    const submitButton = this.querySelector('button[type="submit"]');
+                    showLoading(submitButton, true);
+                    
+                    const formData = new FormData(this);
+                    const email = formData.get('email');
+                    const password = formData.get('password');
+                    
+                    const result = await loginUser(email, password);
+                    
+                    showLoading(submitButton, false);
+                    
+                    if (result.success) {
+                        showMessage('login-messages', 'Login realizado com sucesso!', 'success');
+                        setTimeout(() => {
+                            closeModal('loginModal');
+                            clearForm('login-form');
+                            updateUserInterface();
+                        }, 1000);
+                    } else {
+                        showMessage('login-messages', result.message, 'error');
+                    }
+                });
+            }
             
             // Register form
-            document.getElementById('register-form').addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                const formData = new FormData(this);
-                const password = formData.get('password');
-                const confirmPassword = formData.get('confirmPassword');
-                
-                if (password !== confirmPassword) {
-                    showMessage('register-messages', 'As senhas não coincidem!', 'error');
-                    return;
-                }
-                
-                const userData = {
-                    name: formData.get('name'),
-                    email: formData.get('email'),
-                    phone: formData.get('phone'),
-                    password: password
-                };
-                
-                const result = registerUser(userData);
-                
-                if (result.success) {
-                    showMessage('register-messages', result.message, 'success');
-                    setTimeout(() => {
-                        switchTab('loginTab');
-                        clearForm('register-form');
-                    }, 2000);
-                } else {
-                    showMessage('register-messages', result.message, 'error');
-                }
-            });
+            const registerForm = document.getElementById('register-form');
+            if (registerForm) {
+                registerForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    const submitButton = this.querySelector('button[type="submit"]');
+                    showLoading(submitButton, true);
+                    
+                    const formData = new FormData(this);
+                    const userData = {
+                        name: formData.get('name'),
+                        email: formData.get('email'),
+                        phone: formData.get('phone'),
+                        password: formData.get('password')
+                    };
+                    
+                    const result = await registerUser(userData);
+                    
+                    showLoading(submitButton, false);
+                    
+                    if (result.success) {
+                        showMessage('register-messages', result.message, 'success');
+                        setTimeout(() => {
+                            switchTab('loginTab');
+                            clearForm('register-form');
+                        }, 2000);
+                    } else {
+                        showMessage('register-messages', result.message, 'error');
+                    }
+                });
+            }
+            
+            // Admin login form
+            const adminLoginForm = document.getElementById('admin-login-form');
+            if (adminLoginForm) {
+                adminLoginForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    const formData = new FormData(this);
+                    const username = formData.get('username');
+                    const password = formData.get('password');
+                    
+                    if (checkAdminAccess(username, password)) {
+                        closeModal('adminLoginModal');
+                        clearForm('admin-login-form');
+                        toggleAdminPanel();
+                    } else {
+                        showMessage('admin-login-messages', 'Credenciais inválidas!', 'error');
+                    }
+                });
+            }
             
             // Contact form
-            document.getElementById('contact-form').addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                const formData = new FormData(this);
-                const contactData = {
-                    name: formData.get('name'),
-                    email: formData.get('email'),
-                    phone: formData.get('phone'),
-                    message: formData.get('message')
-                };
-                
-                const result = saveContact(contactData);
-                
-                if (result.success) {
-                    showMessage('contact-messages', result.message, 'success');
-                    clearForm('contact-form');
-                } else {
-                    showMessage('contact-messages', 'Erro ao enviar mensagem. Tente novamente.', 'error');
-                }
-            });
+            const contactForm = document.getElementById('contact-form');
+            if (contactForm) {
+                contactForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    const submitButton = this.querySelector('button[type="submit"]');
+                    showLoading(submitButton, true);
+                    
+                    const formData = new FormData(this);
+                    const contactData = {
+                        name: formData.get('name'),
+                        email: formData.get('email'),
+                        phone: formData.get('phone') || '',
+                        message: formData.get('message')
+                    };
+                    
+                    const result = await saveContact(contactData);
+                    
+                    showLoading(submitButton, false);
+                    
+                    if (result.success) {
+                        showMessage('contact-messages', result.message, 'success');
+                        clearForm('contact-form');
+                    } else {
+                        showMessage('contact-messages', result.message, 'error');
+                    }
+                });
+            }
             
             // Schedule form
-            document.getElementById('schedule-form').addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                const formData = new FormData(this);
-                const appointmentData = {
-                    service: formData.get('service'),
-                    vehicle: formData.get('vehicle'),
-                    date: formData.get('date'),
-                    time: formData.get('time'),
-                    notes: formData.get('notes')
+            const scheduleForm = document.getElementById('schedule-form');
+            if (scheduleForm) {
+                scheduleForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    const submitButton = this.querySelector('button[type="submit"]');
+                    showLoading(submitButton, true);
+                    
+                    const formData = new FormData(this);
+                    const appointmentData = {
+                        service: formData.get('service'),
+                        vehicle: formData.get('vehicle'),
+                        date: formData.get('date'),
+                        time: formData.get('time'),
+                        notes: formData.get('notes')
+                    };
+                    
+                    const result = await createAppointment(appointmentData);
+                    
+                    showLoading(submitButton, false);
+                    
+                    if (result.success) {
+                        closeModal('scheduleModal');
+                        clearForm('schedule-form');
+                        const successMessage = document.getElementById('success-message');
+                        if (successMessage) successMessage.textContent = result.message;
+                        openModal('successModal');
+                    } else {
+                        showMessage('schedule-messages', result.message, 'error');
+                    }
+                });
+            }
+
+            updateUserInterface();
+            setTimeout(updatePublicAnalytics, 1000);
+            
+            if (appState.currentUser) {
+                updateUserInterface();
+            }
+            
+            if (JSON.parse(localStorage.getItem('lbrothers_is_admin') || 'false')) {
+                appState.isAdmin = true;
+            }
+        });
+
+        // ========================================
+        // TESTING FUNCTIONS
+        // ========================================
+        
+        async function runTests() {
+            console.log('🧪 Iniciando testes do sistema...');
+            
+            try {
+                console.log('Test 1: Registro de usuário');
+                const testUser = {
+                    name: 'Teste User',
+                    email: 'teste@example.com',
+                    phone: '11999999999',
+                    password: 'teste123'
                 };
                 
-                const result = createAppointment(appointmentData);
+                const regResult = await registerUser(testUser);
+                console.assert(regResult.success, 'Falha no registro de usuário');
+                console.log('✅ Registro de usuário OK');
                 
-                if (result.success) {
-                    closeModal('scheduleModal');
-                    document.getElementById('success-message').textContent = result.message;
-                    openModal('successModal');
-                    clearForm('schedule-form');
-                } else {
-                    showMessage('schedule-messages', result.message, 'error');
-                }
-            });
-
-            // Update UI based on login status
-            updateUserInterface();
-        });
-
-        // ========================================
-        // UI UPDATE FUNCTIONS
-        // ========================================
-        
-        function updateUserInterface() {
-            // Update header based on login status
-            // This is a placeholder - in a real app you might show user name, logout button, etc.
-            
-            // Show user appointments if logged in
-            displayUserAppointments();
-        }
-
-        function displayUserAppointments() {
-            if (!isLoggedIn()) return;
-            
-            const appointments = getUserAppointments();
-            console.log('User appointments:', appointments); // For testing
-            
-            // You could add a section to display appointments on the page
-            // This is where you'd update the UI to show user's scheduled appointments
-        }
-
-        // ========================================
-        // API SIMULATION (for future enhancement)
-        // ========================================
-        
-        // Simulate WhatsApp API integration
-        function sendWhatsAppNotification(appointment) {
-            // This would integrate with WhatsApp Business API in production
-            console.log('WhatsApp notification would be sent:', {
-                phone: appData.currentUser.phone,
-                message: `Agendamento confirmado para ${formatDate(appointment.date)} às ${appointment.time} - ${appointment.service}`
-            });
-        }
-
-        // Simulate email API integration  
-        function sendEmailConfirmation(appointment) {
-            // This would integrate with email service in production
-            console.log('Email confirmation would be sent:', {
-                email: appData.currentUser.email,
-                subject: 'Confirmação de Agendamento - L\'Brothers',
-                message: `Seu agendamento foi confirmado para ${formatDate(appointment.date)} às ${appointment.time}`
-            });
-        }
-
-        // ========================================
-        // ANALYTICS SIMULATION
-        // ========================================
-        
-        function trackEvent(eventName, data) {
-            // This would integrate with analytics service in production
-            console.log('Analytics event:', eventName, data);
-        }
-
-        // Track form submissions
-        function trackFormSubmission(formType) {
-            trackEvent('form_submission', {
-                type: formType,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        // ========================================
-        // ACCESSIBILITY ENHANCEMENTS
-        // ========================================
-        
-        // Keyboard navigation for modals
-        document.addEventListener('keydown', function(e) {
-            // Close modal on Escape key
-            if (e.key === 'Escape') {
-                const openModals = document.querySelectorAll('.fixed:not(.hidden)');
-                openModals.forEach(modal => {
-                    if (modal.id && modal.id.includes('Modal')) {
-                        closeModal(modal.id);
-                    }
-                });
-            }
-        });
-
-        // ========================================
-        // SERVICE WORKER (for future PWA features)
-        // ========================================
-        
-        // Register service worker for offline functionality
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                // navigator.serviceWorker.register('/sw.js'); // Uncomment for PWA
-            });
-        }
-
-        // ========================================
-        // DATA EXPORT/IMPORT (for testing)
-        // ========================================
-        
-        function exportData() {
-            const dataBlob = new Blob([JSON.stringify(appData, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(dataBlob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'lbrothers-data.json';
-            a.click();
-        }
-
-        function clearAllData() {
-            if (confirm('Tem certeza que deseja limpar todos os dados? Esta ação não pode ser desfeita.')) {
-                localStorage.removeItem('lbrothers_users');
-                localStorage.removeItem('lbrothers_appointments');
-                localStorage.removeItem('lbrothers_contacts');
-                localStorage.removeItem('lbrothers_current_user');
-                location.reload();
+                console.log('Test 2: Login de usuário');
+                const loginResult = await loginUser('teste@example.com', 'teste123');
+                console.assert(loginResult.success, 'Falha no login de usuário');
+                console.log('✅ Login de usuário OK');
+                
+                console.log('Test 3: Criação de agendamento');
+                const testAppointment = {
+                    service: 'lavagem-premium',
+                    vehicle: 'Honda Civic 2020',
+                    date: '2025-12-15',
+                    time: '10:00',
+                    notes: 'Teste agendamento'
+                };
+                
+                const appResult = await createAppointment(testAppointment);
+                console.assert(appResult.success, 'Falha na criação de agendamento');
+                console.log('✅ Criação de agendamento OK');
+                
+                console.log('Test 4: Salvamento de contato');
+                const testContact = {
+                    name: 'Teste Contact',
+                    email: 'contato@example.com',
+                    phone: '11888888888',
+                    message: 'Mensagem de teste'
+                };
+                
+                const contactResult = await saveContact(testContact);
+                console.assert(contactResult.success, 'Falha no salvamento de contato');
+                console.log('✅ Salvamento de contato OK');
+                
+                console.log('Test 5: Acesso admin');
+                const adminResult = checkAdminAccess('ADMIN', 'ADMIN');
+                console.assert(adminResult, 'Falha no acesso admin');
+                console.log('✅ Acesso admin OK');
+                
+                console.log('🎉 Todos os testes passaram!');
+                
+                setTimeout(() => {
+                    console.log('🧹 Limpando dados de teste...');
+                    logout();
+                }, 2000);
+                
+            } catch (error) {
+                console.error('❌ Erro nos testes:', error);
             }
         }
 
-        // Make functions available for testing in console
-        window.lbrothersDebug = {
-            exportData,
-            clearAllData,
-            appData,
+        // ========================================
+        // EXPORT FUNCTIONS FOR TESTING
+        // ========================================
+        
+        window.lbrothersSystem = {
             registerUser,
             loginUser,
+            logout,
             createAppointment,
-            saveContact
+            saveContact,
+            checkAdminAccess,
+            loadAdminData,
+            updateAppointmentStatus,
+            openModal,
+            closeModal,
+            scheduleService,
+            runTests,
+            appState,
+            db,
+            formatDate,
+            getServiceName
         };
 
-        // ========================================
-        // FORM VALIDATION ENHANCEMENTS
-        // ========================================
+        console.log('🚀 L\' Brothers Sistema Completo carregado!');
+        console.log('🔧 Funções disponíveis em: window.lbrothersSystem');
+        console.log('🧪 Execute testes com: window.lbrothersSystem.runTests()');
         
-        // Real-time email validation
-        function validateEmail(email) {
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            return emailRegex.test(email);
+        if (!supabase) {
+            console.log('⚠️ Supabase não configurado - usando armazenamento local');
+        } else {
+            console.log('☁️ Supabase conectado - usando banco de dados na nuvem');
         }
-
-        // Real-time phone validation (Brazilian format)
-        function validatePhone(phone) {
-            const phoneRegex = /^(\(?\d{2}\)?\s?)?(\d{4,5})-?(\d{4})$/;
-            return phoneRegex.test(phone.replace(/\s/g, ''));
-        }
-
-        // Add real-time validation to forms
-        document.addEventListener('DOMContentLoaded', function() {
-            // Email validation
-            const emailInputs = document.querySelectorAll('input[type="email"]');
-            emailInputs.forEach(input => {
-                input.addEventListener('blur', function() {
-                    if (this.value && !validateEmail(this.value)) {
-                        this.setCustomValidity('Por favor, insira um email válido');
-                        this.classList.add('border-red-500');
-                    } else {
-                        this.setCustomValidity('');
-                        this.classList.remove('border-red-500');
-                    }
-                });
-            });
-
-            // Phone validation
-            const phoneInputs = document.querySelectorAll('input[type="tel"]');
-            phoneInputs.forEach(input => {
-                input.addEventListener('blur', function() {
-                    if (this.value && !validatePhone(this.value)) {
-                        this.setCustomValidity('Por favor, insira um telefone válido');
-                        this.classList.add('border-red-500');
-                    } else {
-                        this.setCustomValidity('');
-                        this.classList.remove('border-red-500');
-                    }
-                });
-            });
-        });
-
-        // ========================================
-        // TESTING UTILITIES
-        // ========================================
-        
-        function runTests() {
-            console.log('Running basic tests...');
-            
-            // Test 1: User registration
-            const testUser = {
-                name: 'Test User',
-                email: 'test@example.com', 
-                phone: '11999999999',
-                password: 'test123'
-            };
-            
-            const regResult = registerUser(testUser);
-            console.assert(regResult.success, 'User registration failed');
-            
-            // Test 2: User login
-            const loginResult = loginUser('test@example.com', 'test123');
-            console.assert(loginResult.success, 'User login failed');
-            
-            // Test 3: Create appointment
-            const testAppointment = {
-                service: 'lavagem-premium',
-                vehicle: 'Honda Civic 2020',
-                date: '2025-10-15',
-                time: '10:00',
-                notes: 'Test appointment'
-            };
-            
-            const appResult = createAppointment(testAppointment);
-            console.assert(appResult.success, 'Appointment creation failed');
-            
-            // Test 4: Save contact
-            const testContact = {
-                name: 'Test Contact',
-                email: 'contact@example.com',
-                phone: '11888888888',
-                message: 'Test message'
-            };
-            
-            const contactResult = saveContact(testContact);
-            console.assert(contactResult.success, 'Contact save failed');
-            
-            console.log('Basic tests completed. Check console for any assertion failures.');
-            
-            // Clean up test data
-            appData.users = appData.users.filter(user => user.email !== 'test@example.com');
-            saveData();
-        }
-
-        // Make test function available in console
-        window.runTests = runTests;
-
-        console.log('L\'Brothers Enhanced System loaded successfully!');
-        console.log('Debug functions available at: window.lbrothersDebug');
-        console.log('Run tests with: runTests()');
     </script>
 </body>
 </html>
-                
