@@ -11,6 +11,8 @@
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <!-- Chart.js para análises -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chart.js/3.9.1/chart.min.js"></script>
+    <!-- EmailJS -->
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <style>
         .gradient-bg {
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
@@ -669,6 +671,81 @@
 
     <script>
         // ========================================
+        // EMAILJS CONFIGURATION
+        // ========================================
+        
+        const EMAILJS_CONFIG = {
+            serviceID: 'service_gearthp',
+            templateID: 'template_90i3c9g',
+            publicKey: 'DSo5lZAqsTT5-m6xZ'
+        };
+
+        // Inicializar EmailJS
+        (function() {
+            emailjs.init(EMAILJS_CONFIG.publicKey);
+        })();
+
+        // Função para enviar email de confirmação
+        async function sendConfirmationEmail(appointmentData) {
+            try {
+                const emailData = {
+                    user_name: appointmentData.user_name,
+                    service_name: getServiceName(appointmentData.service),
+                    vehicle: appointmentData.vehicle,
+                    appointment_date: formatDate(appointmentData.date),
+                    appointment_time: appointmentData.time,
+                    notes: appointmentData.notes || 'Nenhuma observação',
+                    email: appointmentData.user_email || appState.currentUser?.email || '',
+                    to_email: appointmentData.user_email || appState.currentUser?.email || ''
+                };
+
+                console.log('Enviando email com dados:', emailData);
+
+                const result = await emailjs.send(
+                    EMAILJS_CONFIG.serviceID,
+                    EMAILJS_CONFIG.templateID,
+                    emailData
+                );
+
+                console.log('Email enviado com sucesso:', result);
+                return { success: true };
+                
+            } catch (error) {
+                console.error('Erro ao enviar email:', error);
+                return { success: false, error };
+            }
+        }
+
+        // Função para notificar admin sobre novo contato
+        async function sendContactNotification(contactData) {
+            try {
+                const emailData = {
+                    user_name: 'Admin L\'Brothers',
+                    service_name: 'Nova mensagem de contato',
+                    vehicle: `De: ${contactData.name} (${contactData.email})`,
+                    appointment_date: formatDate(new Date().toISOString()),
+                    appointment_time: 'N/A',
+                    notes: `Telefone: ${contactData.phone}\nMensagem: ${contactData.message}`,
+                    email: 'henriquepaulistano2019@gmail.com', // Seu email para receber notificações
+                    to_email: 'henriquepaulistano2019@gmail.com'
+                };
+
+                const result = await emailjs.send(
+                    EMAILJS_CONFIG.serviceID,
+                    EMAILJS_CONFIG.templateID,
+                    emailData
+                );
+
+                console.log('Notificação de contato enviada:', result);
+                return { success: true };
+                
+            } catch (error) {
+                console.error('Erro ao enviar notificação de contato:', error);
+                return { success: false, error };
+            }
+        }
+
+        // ========================================
         // SUPABASE CONFIGURATION
         // ========================================
         
@@ -911,6 +988,7 @@
                     user_id: appState.currentUser.id,
                     user_name: appState.currentUser.name,
                     user_phone: appState.currentUser.phone,
+                    user_email: appState.currentUser.email,
                     service: appointmentData.service,
                     vehicle: appointmentData.vehicle,
                     date: appointmentData.date,
@@ -922,8 +1000,32 @@
                 const result = await db.store('appointments', appointment);
                 
                 if (result.success) {
+                    // Enviar email de confirmação
+                    console.log('Agendamento criado, enviando email...');
+                    const emailResult = await sendConfirmationEmail({
+                        user_name: appState.currentUser.name,
+                        user_email: appState.currentUser.email,
+                        service: appointmentData.service,
+                        vehicle: appointmentData.vehicle,
+                        date: appointmentData.date,
+                        time: appointmentData.time,
+                        notes: appointmentData.notes
+                    });
+                    
+                    if (emailResult.success) {
+                        console.log('Email de confirmação enviado com sucesso');
+                    } else {
+                        console.warn('Falha ao enviar email, mas agendamento foi salvo');
+                    }
+                    
                     await loadUserAppointments();
-                    return { success: true, message: 'Agendamento confirmado com sucesso!', appointment: result.data };
+                    return { 
+                        success: true, 
+                        message: emailResult.success 
+                            ? 'Agendamento confirmado! Verifique seu email.' 
+                            : 'Agendamento confirmado com sucesso!', 
+                        appointment: result.data 
+                    };
                 }
                 
                 return { success: false, message: 'Erro ao criar agendamento. Tente novamente.' };
@@ -978,6 +1080,16 @@
                 const result = await db.store('contacts', contact);
                 
                 if (result.success) {
+                    // Enviar notificação para admin
+                    console.log('Contato salvo, enviando notificação...');
+                    const emailResult = await sendContactNotification(contactData);
+                    
+                    if (emailResult.success) {
+                        console.log('Notificação de contato enviada com sucesso');
+                    } else {
+                        console.warn('Falha ao enviar notificação, mas contato foi salvo');
+                    }
+                    
                     return { success: true, message: 'Mensagem enviada com sucesso!' };
                 }
                 
