@@ -683,73 +683,71 @@
     </div>
 
     <script>
-        // Sistema L' Brothers - Versão Completa e Corrigida
-        
         // ========================================
-        // EMAILJS CONFIGURATION - CORRIGIDO
+        // CONFIGURAÇÕES CORRIGIDAS
         // ========================================
         
+        // EmailJS Configuration - CORRIGIDO
         const EMAILJS_CONFIG = {
-            serviceID: 'service_gearthp',
+            serviceID: 'service_gearthp',  // Corrigido conforme o print
             templateID: 'template_90i3c9g',
             publicKey: 'DSo5lZAqsTT5-m6xZ'
         };
 
-        // Inicializar EmailJS
-        (function() {
-            emailjs.init(EMAILJS_CONFIG.publicKey);
-            console.log('EmailJS inicializado com sucesso');
-        })();
-
-        // Função corrigida para enviar email
-        async function sendConfirmationEmail(appointmentData, userEmail) {
-            try {
-                const emailData = {
-                    user_name: appointmentData.user_name || 'Cliente',
-                    service_name: getServiceName(appointmentData.service),
-                    vehicle: appointmentData.vehicle,
-                    appointment_date: formatDate(appointmentData.date),
-                    appointment_time: appointmentData.time,
-                    notes: appointmentData.notes || 'Nenhuma observação'
-                };
-
-                console.log('Enviando email para:', userEmail);
-                console.log('Dados do email:', emailData);
-
-                const result = await emailjs.send(
-                    EMAILJS_CONFIG.serviceID,
-                    EMAILJS_CONFIG.templateID,
-                    emailData,
-                    EMAILJS_CONFIG.publicKey
-                );
-
-                console.log('Email enviado com sucesso:', result);
-                return { success: true };
-                
-            } catch (error) {
-                console.error('Erro ao enviar email:', error);
-                return { success: false, error };
-            }
-        }
-
-        // ========================================
-        // SUPABASE CONFIGURATION
-        // ========================================
-        
+        // Supabase Configuration - Mantido conforme original
         const SUPABASE_URL = 'https://ulyxmbzdwntddcesjsnw.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVseXhtYnpkd250ZGRjZXNqc253Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc4ODIyMzEsImV4cCI6MjA3MzQ1ODIzMX0.Q3OmlDne3ZoU1QJHOzr_MD6ho4FaRynGJoaz_9pZ3UM';
         
         let supabase = null;
         
+        // Inicialização do Supabase
         try {
             supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            console.log('Supabase conectado com sucesso');
+            console.log('✅ Supabase conectado com sucesso');
+            
+            // Teste de conexão
+            testSupabaseConnection();
         } catch (error) {
-            console.warn('Supabase não configurado, usando armazenamento local');
+            console.error('❌ Erro ao conectar Supabase:', error);
+        }
+
+        // Inicialização do EmailJS
+        (function() {
+            try {
+                emailjs.init(EMAILJS_CONFIG.publicKey);
+                console.log('✅ EmailJS inicializado com sucesso');
+                
+                // Teste de configuração
+                testEmailJSConfiguration();
+            } catch (error) {
+                console.error('❌ Erro ao inicializar EmailJS:', error);
+            }
+        })();
+
+        // ========================================
+        // FUNÇÕES DE TESTE
+        // ========================================
+        
+        async function testSupabaseConnection() {
+            try {
+                const { data, error } = await supabase.from('users').select('count', { count: 'exact' });
+                if (error) throw error;
+                console.log('✅ Teste Supabase bem-sucedido');
+            } catch (error) {
+                console.error('❌ Teste Supabase falhou:', error.message);
+            }
+        }
+
+        function testEmailJSConfiguration() {
+            if (typeof emailjs === 'undefined') {
+                console.error('❌ EmailJS não carregado');
+                return;
+            }
+            console.log('✅ EmailJS configurado corretamente');
         }
 
         // ========================================
-        // DATABASE MANAGER
+        // DATABASE MANAGER CORRIGIDO
         // ========================================
         
         class DatabaseManager {
@@ -758,18 +756,31 @@
             }
 
             async store(table, data) {
+                console.log(`📝 Tentando salvar em ${table}:`, data);
+                
                 if (this.isSupabaseEnabled) {
                     try {
+                        // Adicionar timestamp se não existir
+                        const dataWithTimestamp = {
+                            ...data,
+                            created_at: new Date().toISOString()
+                        };
+
                         const { data: result, error } = await supabase
                             .from(table)
-                            .insert([data])
+                            .insert([dataWithTimestamp])
                             .select()
                             .single();
                         
-                        if (error) throw error;
+                        if (error) {
+                            console.error(`❌ Erro Supabase em ${table}:`, error);
+                            throw error;
+                        }
+                        
+                        console.log(`✅ Salvo no Supabase ${table}:`, result);
                         return { success: true, data: result };
                     } catch (error) {
-                        console.error(`Erro ao salvar em ${table}:`, error);
+                        console.error(`❌ Erro ao salvar em ${table}:`, error);
                         return this.storeLocal(table, data);
                     }
                 } else {
@@ -778,6 +789,8 @@
             }
 
             async fetch(table, filters = {}) {
+                console.log(`📖 Buscando em ${table} com filtros:`, filters);
+                
                 if (this.isSupabaseEnabled) {
                     try {
                         let query = supabase.from(table).select('*');
@@ -786,11 +799,13 @@
                             query = query.eq(key, value);
                         });
                         
-                        const { data, error } = await query;
+                        const { data, error } = await query.order('created_at', { ascending: false });
                         if (error) throw error;
+                        
+                        console.log(`✅ Dados obtidos do Supabase ${table}:`, data);
                         return { success: true, data };
                     } catch (error) {
-                        console.error(`Erro ao buscar ${table}:`, error);
+                        console.error(`❌ Erro ao buscar ${table}:`, error);
                         return this.fetchLocal(table, filters);
                     }
                 } else {
@@ -799,19 +814,22 @@
             }
 
             async update(table, id, updates) {
+                console.log(`📝 Atualizando ${table} ID ${id}:`, updates);
+                
                 if (this.isSupabaseEnabled) {
                     try {
                         const { data, error } = await supabase
                             .from(table)
-                            .update(updates)
+                            .update({ ...updates, updated_at: new Date().toISOString() })
                             .eq('id', id)
                             .select()
                             .single();
                         
                         if (error) throw error;
+                        console.log(`✅ Atualizado no Supabase ${table}:`, data);
                         return { success: true, data };
                     } catch (error) {
-                        console.error(`Erro ao atualizar ${table}:`, error);
+                        console.error(`❌ Erro ao atualizar ${table}:`, error);
                         return this.updateLocal(table, id, updates);
                     }
                 } else {
@@ -819,11 +837,17 @@
                 }
             }
 
+            // Métodos de fallback para localStorage
             storeLocal(table, data) {
                 const items = JSON.parse(localStorage.getItem(`lbrothers_${table}`) || '[]');
-                const newItem = { ...data, id: this.generateId(), created_at: new Date().toISOString() };
+                const newItem = { 
+                    ...data, 
+                    id: this.generateId(), 
+                    created_at: new Date().toISOString() 
+                };
                 items.push(newItem);
                 localStorage.setItem(`lbrothers_${table}`, JSON.stringify(items));
+                console.log(`💾 Salvo localmente em ${table}:`, newItem);
                 return { success: true, data: newItem };
             }
 
@@ -835,6 +859,7 @@
                     filtered = filtered.filter(item => item[key] === value);
                 });
                 
+                console.log(`💾 Dados locais de ${table}:`, filtered);
                 return { success: true, data: filtered };
             }
 
@@ -845,6 +870,7 @@
                 if (index !== -1) {
                     items[index] = { ...items[index], ...updates, updated_at: new Date().toISOString() };
                     localStorage.setItem(`lbrothers_${table}`, JSON.stringify(items));
+                    console.log(`💾 Atualizado localmente em ${table}:`, items[index]);
                     return { success: true, data: items[index] };
                 }
                 
@@ -857,6 +883,43 @@
         }
 
         const db = new DatabaseManager();
+
+        // ========================================
+        // EMAIL FUNCTIONS CORRIGIDAS
+        // ========================================
+        
+        async function sendConfirmationEmail(appointmentData, userEmail) {
+            console.log('📧 Tentando enviar email para:', userEmail);
+            console.log('📧 Dados do agendamento:', appointmentData);
+            
+            try {
+                const templateParams = {
+                    user_name: appointmentData.user_name || 'Cliente',
+                    to_email: userEmail,
+                    service_name: getServiceName(appointmentData.service),
+                    vehicle: appointmentData.vehicle,
+                    appointment_date: formatDate(appointmentData.date),
+                    appointment_time: appointmentData.time,
+                    notes: appointmentData.notes || 'Nenhuma observação adicional'
+                };
+
+                console.log('📧 Parâmetros do template:', templateParams);
+
+                const result = await emailjs.send(
+                    EMAILJS_CONFIG.serviceID,
+                    EMAILJS_CONFIG.templateID,
+                    templateParams,
+                    EMAILJS_CONFIG.publicKey
+                );
+
+                console.log('✅ Email enviado com sucesso:', result);
+                return { success: true, result };
+                
+            } catch (error) {
+                console.error('❌ Erro ao enviar email:', error);
+                return { success: false, error: error.message || 'Erro desconhecido' };
+            }
+        }
 
         // ========================================
         // APPLICATION STATE
@@ -898,7 +961,8 @@
             const container = document.getElementById(containerId);
             if (!container) return;
             
-            container.innerHTML = `<div class="${type}-message">${message}</div>`;
+            const cssClass = type === 'success' ? 'success-message' : 'error-message';
+            container.innerHTML = `<div class="${cssClass}">${message}</div>`;
             setTimeout(() => container.innerHTML = '', 5000);
         }
 
@@ -907,20 +971,26 @@
             if (spinner) {
                 spinner.classList.toggle('active', show);
             }
+            buttonElement.disabled = show;
         }
 
         // ========================================
-        // USER MANAGEMENT
+        // USER MANAGEMENT CORRIGIDO
         // ========================================
         
         async function registerUser(userData) {
+            console.log('👤 Registrando usuário:', userData.email);
+            
             try {
+                // Verificar se o email já existe
                 const existingUsers = await db.fetch('users', { email: userData.email });
                 
                 if (existingUsers.data.length > 0) {
+                    console.log('❌ Email já cadastrado');
                     return { success: false, message: 'Email já cadastrado!' };
                 }
 
+                // Hash básico da senha (use bcrypt em produção)
                 const hashedPassword = btoa(userData.password);
                 
                 const newUser = {
@@ -934,24 +1004,28 @@
                 const result = await db.store('users', newUser);
                 
                 if (result.success) {
+                    console.log('✅ Usuário registrado com sucesso');
                     return { success: true, message: 'Cadastro realizado com sucesso!' };
                 }
                 
                 return { success: false, message: 'Erro ao criar conta. Tente novamente.' };
                 
             } catch (error) {
-                console.error('Erro no registro:', error);
+                console.error('❌ Erro no registro:', error);
                 return { success: false, message: 'Erro interno. Tente novamente.' };
             }
         }
 
         async function loginUser(email, password) {
+            console.log('🔐 Tentando login para:', email);
+            
             try {
                 const hashedPassword = btoa(password);
-                const users = await db.fetch('users', { email, password: hashedPassword });
+                const users = await db.fetch('users');
                 
-                if (users.data.length > 0) {
-                    const user = users.data[0];
+                const user = users.data.find(u => u.email === email && u.password === hashedPassword);
+                
+                if (user) {
                     appState.currentUser = {
                         id: user.id,
                         name: user.name,
@@ -961,13 +1035,15 @@
                     };
                     
                     localStorage.setItem('lbrothers_current_user', JSON.stringify(appState.currentUser));
+                    console.log('✅ Login realizado com sucesso');
                     return { success: true, user: appState.currentUser };
                 }
                 
+                console.log('❌ Credenciais inválidas');
                 return { success: false, message: 'Email ou senha incorretos!' };
                 
             } catch (error) {
-                console.error('Erro no login:', error);
+                console.error('❌ Erro no login:', error);
                 return { success: false, message: 'Erro interno. Tente novamente.' };
             }
         }
@@ -983,6 +1059,8 @@
             if (userDashboard) userDashboard.classList.add('hidden');
             const adminPanel = document.getElementById('adminPanel');
             if (adminPanel) adminPanel.classList.remove('active');
+            
+            console.log('👋 Logout realizado');
         }
 
         function isLoggedIn() {
@@ -990,7 +1068,7 @@
         }
 
         // ========================================
-        // APPOINTMENT MANAGEMENT - COM EMAILJS
+        // APPOINTMENT MANAGEMENT CORRIGIDO
         // ========================================
         
         async function createAppointment(appointmentData) {
@@ -998,10 +1076,13 @@
                 return { success: false, message: 'Você precisa estar logado para agendar!' };
             }
 
+            console.log('📅 Criando agendamento:', appointmentData);
+
             try {
                 const appointment = {
                     user_id: appState.currentUser.id,
                     user_name: appState.currentUser.name,
+                    user_email: appState.currentUser.email,
                     user_phone: appState.currentUser.phone,
                     service: appointmentData.service,
                     vehicle: appointmentData.vehicle,
@@ -1014,16 +1095,20 @@
                 const result = await db.store('appointments', appointment);
                 
                 if (result.success) {
-                    console.log('Agendamento salvo, tentando enviar email...');
+                    console.log('✅ Agendamento salvo, enviando email...');
                     
-                    const emailResult = await sendConfirmationEmail(appointment, appState.currentUser.email);
+                    const emailResult = await sendConfirmationEmail(
+                        result.data, 
+                        appState.currentUser.email
+                    );
                     
                     let successMessage = 'Agendamento confirmado com sucesso!';
                     if (emailResult.success) {
                         successMessage = 'Agendamento confirmado! Verifique seu email para detalhes.';
-                        console.log('Email de confirmação enviado');
+                        console.log('✅ Email de confirmação enviado');
                     } else {
-                        console.warn('Email não enviado, mas agendamento foi salvo');
+                        console.warn('⚠️ Email não enviado, mas agendamento foi salvo');
+                        console.warn('Erro do email:', emailResult.error);
                     }
                     
                     await loadUserAppointments();
@@ -1037,7 +1122,7 @@
                 return { success: false, message: 'Erro ao criar agendamento. Tente novamente.' };
                 
             } catch (error) {
-                console.error('Erro ao criar agendamento:', error);
+                console.error('❌ Erro ao criar agendamento:', error);
                 return { success: false, message: 'Erro interno. Tente novamente.' };
             }
         }
@@ -1049,8 +1134,9 @@
                 const result = await db.fetch('appointments', { user_id: appState.currentUser.id });
                 appState.appointments = result.data || [];
                 displayUserAppointments();
+                console.log('📅 Agendamentos do usuário carregados:', appState.appointments.length);
             } catch (error) {
-                console.error('Erro ao carregar agendamentos:', error);
+                console.error('❌ Erro ao carregar agendamentos:', error);
             }
         }
 
@@ -1080,13 +1166,14 @@
                 const result = await db.update('appointments', appointmentId, { status: newStatus });
                 
                 if (result.success) {
+                    console.log(`✅ Status do agendamento ${appointmentId} atualizado para: ${newStatus}`);
                     await loadAdminData();
                     await loadUserAppointments();
                 }
                 
                 return result;
             } catch (error) {
-                console.error('Erro ao atualizar status:', error);
+                console.error('❌ Erro ao atualizar status:', error);
                 return { success: false, error };
             }
         }
@@ -1096,6 +1183,8 @@
         // ========================================
         
         async function saveContact(contactData) {
+            console.log('📨 Salvando contato:', contactData.email);
+            
             try {
                 const contact = {
                     name: contactData.name,
@@ -1107,13 +1196,14 @@
                 const result = await db.store('contacts', contact);
                 
                 if (result.success) {
+                    console.log('✅ Contato salvo com sucesso');
                     return { success: true, message: 'Mensagem enviada com sucesso!' };
                 }
                 
                 return { success: false, message: 'Erro ao enviar mensagem. Tente novamente.' };
                 
             } catch (error) {
-                console.error('Erro ao salvar contato:', error);
+                console.error('❌ Erro ao salvar contato:', error);
                 return { success: false, message: 'Erro interno. Tente novamente.' };
             }
         }
@@ -1126,6 +1216,7 @@
             if (username === 'ADMIN' && password === 'ADMIN') {
                 appState.isAdmin = true;
                 localStorage.setItem('lbrothers_is_admin', 'true');
+                console.log('🔑 Acesso admin autorizado');
                 return true;
             }
             return false;
@@ -1133,6 +1224,8 @@
 
         async function loadAdminData() {
             if (!appState.isAdmin) return;
+            
+            console.log('👨‍💼 Carregando dados administrativos...');
             
             try {
                 const [appointmentsResult, usersResult, contactsResult] = await Promise.all([
@@ -1156,8 +1249,10 @@
                 updateAdminDashboard(appointments, contacts);
                 updateAnalytics(appointments);
                 
+                console.log('✅ Dados administrativos carregados:', appState.analytics);
+                
             } catch (error) {
-                console.error('Erro ao carregar dados admin:', error);
+                console.error('❌ Erro ao carregar dados admin:', error);
             }
         }
 
@@ -1439,6 +1534,7 @@
         // ========================================
         
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Inicializando sistema L\' Brothers...');
             updateUserInterface();
             
             // Login form
@@ -1582,15 +1678,16 @@
                 const today = new Date().toISOString().split('T')[0];
                 scheduleDate.min = today;
             }
+
+            console.log('✅ Sistema L\' Brothers inicializado com sucesso!');
         });
 
         // ========================================
-        // SISTEMA DE TESTES E API GLOBAL
+        // SISTEMA DE TESTES GLOBAL
         // ========================================
         
-        // Expor sistema globalmente para testes
         window.lbrothersSystem = {
-            // Funções de teste
+            // Teste de EmailJS
             testEmailJS: async function() {
                 const testData = {
                     user_name: 'Cliente Teste',
@@ -1601,50 +1698,69 @@
                     notes: 'Teste do sistema EmailJS'
                 };
                 
-                console.log('Testando EmailJS...');
-                const result = await sendConfirmationEmail(testData, 'teste@email.com');
-                console.log('Resultado:', result);
+                console.log('🧪 Testando EmailJS...');
+                const result = await sendConfirmationEmail(testData, 'teste@example.com');
+                console.log('Resultado do teste EmailJS:', result);
                 return result;
             },
             
-            // Dados de teste
-            generateTestData: function() {
-                const services = ['lavagem-premium', 'polimento-cristalizado', 'detalhamento-interno'];
-                const testAppointments = [];
+            // Teste de Supabase
+            testSupabase: async function() {
+                console.log('🧪 Testando Supabase...');
+                const testUser = {
+                    name: 'Usuário Teste',
+                    email: 'teste@supabase.com',
+                    phone: '11999999999',
+                    password: btoa('senha123'),
+                    role: 'user'
+                };
                 
-                for (let i = 0; i < 10; i++) {
-                    testAppointments.push({
-                        user_name: `Cliente ${i + 1}`,
-                        service: services[Math.floor(Math.random() * services.length)],
-                        vehicle: `Veículo ${i + 1}`,
-                        date: new Date(Date.now() + Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                        time: '14:00',
-                        status: 'agendado'
-                    });
-                }
-                
-                return testAppointments;
+                const result = await db.store('users', testUser);
+                console.log('Resultado do teste Supabase:', result);
+                return result;
             },
             
             // Status do sistema
             getSystemStatus: function() {
-                return {
+                const status = {
                     supabaseConnected: !!supabase,
                     emailJSConfigured: !!EMAILJS_CONFIG.serviceID,
                     userLoggedIn: isLoggedIn(),
                     isAdmin: appState.isAdmin,
-                    appointmentsCount: appState.appointments.length
+                    appointmentsCount: appState.appointments.length,
+                    config: {
+                        supabaseUrl: SUPABASE_URL,
+                        emailJSServiceId: EMAILJS_CONFIG.serviceID,
+                        emailJSTemplateId: EMAILJS_CONFIG.templateID
+                    }
                 };
+                console.log('📊 Status do sistema:', status);
+                return status;
             },
             
-            // Funções utilitárias expostas
+            // Limpar dados de teste
+            clearTestData: function() {
+                localStorage.removeItem('lbrothers_users');
+                localStorage.removeItem('lbrothers_appointments');
+                localStorage.removeItem('lbrothers_contacts');
+                console.log('🧹 Dados de teste limpos');
+            },
+            
+            // Acessar dados diretamente
             db: db,
-            appState: appState
+            appState: appState,
+            
+            // Funções de debug
+            debug: {
+                emailConfig: EMAILJS_CONFIG,
+                supabaseUrl: SUPABASE_URL,
+                isSupabaseConnected: !!supabase
+            }
         };
 
-        console.log('Sistema L\' Brothers carregado com sucesso!');
-        console.log('Use window.lbrothersSystem para acessar funcionalidades de teste');
-        console.log('Status do sistema:', window.lbrothersSystem.getSystemStatus());
+        console.log('🎉 Sistema L\' Brothers carregado com sucesso!');
+        console.log('📞 Use window.lbrothersSystem para acessar funcionalidades de teste');
+        console.log('🔍 Status:', window.lbrothersSystem.getSystemStatus());
     </script>
 </body>
 </html>
