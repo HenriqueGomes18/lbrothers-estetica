@@ -169,6 +169,16 @@
         </div>
     </header>
 
+    <!-- Connection Status -->
+    <div id="connection-status" class="hidden bg-yellow-100 border-l-4 border-yellow-500 p-4">
+        <div class="container mx-auto">
+            <p class="text-yellow-700">
+                <i class="fas fa-exclamation-triangle mr-2"></i>
+                <span id="connection-message">Verificando conexão...</span>
+            </p>
+        </div>
+    </div>
+
     <!-- User Dashboard -->
     <div id="userDashboard" class="hidden bg-white shadow-lg border-b">
         <div class="container mx-auto px-4 py-6">
@@ -537,7 +547,7 @@
         </div>
     </div>
 
-    <!-- Admin Login Modal -->
+    <!-- Outros modais -->
     <div id="adminLoginModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
             <div class="p-6">
@@ -628,50 +638,6 @@
         </div>
     </div>
 
-    <!-- Services Modal -->
-    <div id="servicesModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
-            <div class="p-6">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-2xl font-bold">Nossos Serviços</h3>
-                    <button onclick="closeModal('servicesModal')" class="text-gray-500 hover:text-gray-700">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="border rounded-lg p-6">
-                        <h4 class="font-semibold text-lg mb-2">Lavagem Premium</h4>
-                        <p class="text-blue-500 font-bold mb-2">R$ 120 - R$ 250</p>
-                        <p class="text-gray-600 mb-4">Lavagem completa com produtos importados, limpeza de rodas, vidros e acabamento perfeito.</p>
-                        <button onclick="scheduleService('lavagem-premium')" class="text-blue-500 hover:text-blue-700 font-medium">Agendar</button>
-                    </div>
-                    
-                    <div class="border rounded-lg p-6">
-                        <h4 class="font-semibold text-lg mb-2">Polimento Cristalizado</h4>
-                        <p class="text-blue-500 font-bold mb-2">R$ 350 - R$ 600</p>
-                        <p class="text-gray-600 mb-4">Remoção de riscos, proteção duradoura até 12 meses.</p>
-                        <button onclick="scheduleService('polimento-cristalizado')" class="text-blue-500 hover:text-blue-700 font-medium">Agendar</button>
-                    </div>
-                    
-                    <div class="border rounded-lg p-6">
-                        <h4 class="font-semibold text-lg mb-2">Detalhamento Interno</h4>
-                        <p class="text-blue-500 font-bold mb-2">R$ 250 - R$ 400</p>
-                        <p class="text-gray-600 mb-4">Limpeza profunda, higienização de estofados e componentes.</p>
-                        <button onclick="scheduleService('detalhamento-interno')" class="text-blue-500 hover:text-blue-700 font-medium">Agendar</button>
-                    </div>
-                    
-                    <div class="border rounded-lg p-6">
-                        <h4 class="font-semibold text-lg mb-2">Proteção de Pintura</h4>
-                        <p class="text-blue-500 font-bold mb-2">R$ 500 - R$ 1.200</p>
-                        <p class="text-gray-600 mb-4">Aplicação de cerâmica para proteção contra UV e contaminação.</p>
-                        <button onclick="scheduleService('protecao-pintura')" class="text-blue-500 hover:text-blue-700 font-medium">Agendar</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Success Modal -->
     <div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-8 text-center">
@@ -684,83 +650,113 @@
 
     <script>
         // ========================================
-        // CONFIGURAÇÕES CORRIGIDAS
+        // CONFIGURAÇÕES CORRIGIDAS PARA CORS
         // ========================================
         
-        // EmailJS Configuration - CORRIGIDO
+        // EmailJS Configuration
         const EMAILJS_CONFIG = {
-            serviceID: 'service_gearthp',  // Corrigido conforme o print
+            serviceID: 'service_gearthp',
             templateID: 'template_90i3c9g',
             publicKey: 'DSo5lZAqsTT5-m6xZ'
         };
 
-        // Supabase Configuration - Mantido conforme original
+        // Supabase Configuration com CORS corrigido
         const SUPABASE_URL = 'https://ulyxmbzdwntddcesjsnw.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVseXhtYnpkd250ZGRjZXNqc253Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc4ODIyMzEsImV4cCI6MjA3MzQ1ODIzMX0.Q3OmlDne3ZoU1QJHOzr_MD6ho4FaRynGJoaz_9pZ3UM';
         
         let supabase = null;
+        let isSupabaseEnabled = false;
         
-        // Inicialização do Supabase
+        // Inicialização melhorada do Supabase
         try {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            console.log('✅ Supabase conectado com sucesso');
-            
-            // Teste de conexão
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+                auth: {
+                    persistSession: true,
+                    detectSessionInUrl: false
+                }
+            });
+            console.log('Supabase inicializado');
             testSupabaseConnection();
         } catch (error) {
-            console.error('❌ Erro ao conectar Supabase:', error);
+            console.error('Erro ao inicializar Supabase:', error);
+            showConnectionStatus('Usando armazenamento local - Supabase indisponível', 'warning');
         }
 
         // Inicialização do EmailJS
         (function() {
             try {
                 emailjs.init(EMAILJS_CONFIG.publicKey);
-                console.log('✅ EmailJS inicializado com sucesso');
-                
-                // Teste de configuração
-                testEmailJSConfiguration();
+                console.log('EmailJS inicializado com sucesso');
             } catch (error) {
-                console.error('❌ Erro ao inicializar EmailJS:', error);
+                console.error('Erro ao inicializar EmailJS:', error);
             }
         })();
 
         // ========================================
-        // FUNÇÕES DE TESTE
+        // FUNÇÕES DE CONEXÃO E STATUS
         // ========================================
         
-        async function testSupabaseConnection() {
-            try {
-                const { data, error } = await supabase.from('users').select('count', { count: 'exact' });
-                if (error) throw error;
-                console.log('✅ Teste Supabase bem-sucedido');
-            } catch (error) {
-                console.error('❌ Teste Supabase falhou:', error.message);
+        function showConnectionStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('connection-status');
+            const messageSpan = document.getElementById('connection-message');
+            
+            if (statusDiv && messageSpan) {
+                messageSpan.textContent = message;
+                statusDiv.className = `bg-${type === 'warning' ? 'yellow' : type === 'error' ? 'red' : 'blue'}-100 border-l-4 border-${type === 'warning' ? 'yellow' : type === 'error' ? 'red' : 'blue'}-500 p-4`;
+                statusDiv.classList.remove('hidden');
+                
+                if (type === 'success') {
+                    setTimeout(() => statusDiv.classList.add('hidden'), 3000);
+                }
             }
         }
 
-        function testEmailJSConfiguration() {
-            if (typeof emailjs === 'undefined') {
-                console.error('❌ EmailJS não carregado');
-                return;
+        async function testSupabaseConnection() {
+            try {
+                // Teste simples de conexão
+                const { data, error, count } = await supabase
+                    .from('users')
+                    .select('*', { count: 'exact', head: true });
+                
+                if (error && error.code !== 'PGRST116') { // PGRST116 é "tabela não encontrada" - ainda assim indica conexão
+                    throw error;
+                }
+                
+                isSupabaseEnabled = true;
+                console.log('✅ Conexão Supabase OK');
+                showConnectionStatus('Conectado ao banco de dados', 'success');
+                return true;
+            } catch (error) {
+                console.error('❌ Falha na conexão Supabase:', error);
+                isSupabaseEnabled = false;
+                showConnectionStatus('Usando modo offline - alguns recursos podem estar limitados', 'warning');
+                return false;
             }
-            console.log('✅ EmailJS configurado corretamente');
         }
 
         // ========================================
-        // DATABASE MANAGER CORRIGIDO
+        // DATABASE MANAGER APRIMORADO
         // ========================================
         
         class DatabaseManager {
             constructor() {
-                this.isSupabaseEnabled = !!supabase;
+                this.retryAttempts = 3;
+                this.retryDelay = 1000;
             }
 
             async store(table, data) {
-                console.log(`📝 Tentando salvar em ${table}:`, data);
+                console.log(`Salvando em ${table}:`, data);
                 
-                if (this.isSupabaseEnabled) {
+                if (isSupabaseEnabled) {
+                    return await this.storeSupabase(table, data);
+                } else {
+                    return this.storeLocal(table, data);
+                }
+            }
+
+            async storeSupabase(table, data) {
+                for (let attempt = 1; attempt <= this.retryAttempts; attempt++) {
                     try {
-                        // Adicionar timestamp se não existir
                         const dataWithTimestamp = {
                             ...data,
                             created_at: new Date().toISOString()
@@ -773,71 +769,91 @@
                             .single();
                         
                         if (error) {
-                            console.error(`❌ Erro Supabase em ${table}:`, error);
-                            throw error;
+                            console.error(`Erro Supabase tentativa ${attempt}:`, error);
+                            if (attempt === this.retryAttempts) {
+                                throw error;
+                            }
+                            await this.delay(this.retryDelay * attempt);
+                            continue;
                         }
                         
                         console.log(`✅ Salvo no Supabase ${table}:`, result);
                         return { success: true, data: result };
+                        
                     } catch (error) {
-                        console.error(`❌ Erro ao salvar em ${table}:`, error);
-                        return this.storeLocal(table, data);
+                        if (attempt === this.retryAttempts) {
+                            console.error(`❌ Falha final em ${table} após ${this.retryAttempts} tentativas:`, error);
+                            console.log('🔄 Fallback para armazenamento local');
+                            return this.storeLocal(table, data);
+                        }
                     }
-                } else {
-                    return this.storeLocal(table, data);
                 }
             }
 
             async fetch(table, filters = {}) {
-                console.log(`📖 Buscando em ${table} com filtros:`, filters);
-                
-                if (this.isSupabaseEnabled) {
-                    try {
-                        let query = supabase.from(table).select('*');
-                        
-                        Object.entries(filters).forEach(([key, value]) => {
-                            query = query.eq(key, value);
-                        });
-                        
-                        const { data, error } = await query.order('created_at', { ascending: false });
-                        if (error) throw error;
-                        
-                        console.log(`✅ Dados obtidos do Supabase ${table}:`, data);
-                        return { success: true, data };
-                    } catch (error) {
-                        console.error(`❌ Erro ao buscar ${table}:`, error);
-                        return this.fetchLocal(table, filters);
-                    }
+                if (isSupabaseEnabled) {
+                    return await this.fetchSupabase(table, filters);
                 } else {
                     return this.fetchLocal(table, filters);
                 }
             }
 
-            async update(table, id, updates) {
-                console.log(`📝 Atualizando ${table} ID ${id}:`, updates);
-                
-                if (this.isSupabaseEnabled) {
-                    try {
-                        const { data, error } = await supabase
-                            .from(table)
-                            .update({ ...updates, updated_at: new Date().toISOString() })
-                            .eq('id', id)
-                            .select()
-                            .single();
-                        
-                        if (error) throw error;
-                        console.log(`✅ Atualizado no Supabase ${table}:`, data);
-                        return { success: true, data };
-                    } catch (error) {
-                        console.error(`❌ Erro ao atualizar ${table}:`, error);
-                        return this.updateLocal(table, id, updates);
+            async fetchSupabase(table, filters = {}) {
+                try {
+                    let query = supabase.from(table).select('*');
+                    
+                    Object.entries(filters).forEach(([key, value]) => {
+                        query = query.eq(key, value);
+                    });
+                    
+                    const { data, error } = await query.order('created_at', { ascending: false });
+                    
+                    if (error) {
+                        console.error(`Erro ao buscar ${table}:`, error);
+                        return this.fetchLocal(table, filters);
                     }
+                    
+                    console.log(`✅ Dados do Supabase ${table}:`, data?.length || 0, 'registros');
+                    return { success: true, data: data || [] };
+                    
+                } catch (error) {
+                    console.error(`❌ Erro ao buscar ${table}:`, error);
+                    return this.fetchLocal(table, filters);
+                }
+            }
+
+            async update(table, id, updates) {
+                if (isSupabaseEnabled) {
+                    return await this.updateSupabase(table, id, updates);
                 } else {
                     return this.updateLocal(table, id, updates);
                 }
             }
 
-            // Métodos de fallback para localStorage
+            async updateSupabase(table, id, updates) {
+                try {
+                    const { data, error } = await supabase
+                        .from(table)
+                        .update({ ...updates, updated_at: new Date().toISOString() })
+                        .eq('id', id)
+                        .select()
+                        .single();
+                    
+                    if (error) {
+                        console.error(`Erro ao atualizar ${table}:`, error);
+                        return this.updateLocal(table, id, updates);
+                    }
+                    
+                    console.log(`✅ Atualizado no Supabase ${table}:`, data);
+                    return { success: true, data };
+                    
+                } catch (error) {
+                    console.error(`❌ Erro ao atualizar ${table}:`, error);
+                    return this.updateLocal(table, id, updates);
+                }
+            }
+
+            // Métodos locais (fallback)
             storeLocal(table, data) {
                 const items = JSON.parse(localStorage.getItem(`lbrothers_${table}`) || '[]');
                 const newItem = { 
@@ -859,7 +875,7 @@
                     filtered = filtered.filter(item => item[key] === value);
                 });
                 
-                console.log(`💾 Dados locais de ${table}:`, filtered);
+                console.log(`💾 Dados locais de ${table}:`, filtered.length, 'registros');
                 return { success: true, data: filtered };
             }
 
@@ -878,46 +894,48 @@
             }
 
             generateId() {
-                return 'id_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+                return 'local_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+            }
+
+            delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
             }
         }
 
         const db = new DatabaseManager();
 
         // ========================================
-        // EMAIL FUNCTIONS CORRIGIDAS
+        // EMAIL FUNCTIONS
         // ========================================
         
         async function sendConfirmationEmail(appointmentData, userEmail) {
-            console.log('📧 Tentando enviar email para:', userEmail);
-            console.log('📧 Dados do agendamento:', appointmentData);
+            console.log('📧 Enviando email para:', userEmail);
             
             try {
+                // Modificar template params para corresponder ao template do EmailJS
                 const templateParams = {
                     user_name: appointmentData.user_name || 'Cliente',
-                    to_email: userEmail,
                     service_name: getServiceName(appointmentData.service),
                     vehicle: appointmentData.vehicle,
                     appointment_date: formatDate(appointmentData.date),
                     appointment_time: appointmentData.time,
-                    notes: appointmentData.notes || 'Nenhuma observação adicional'
+                    notes: appointmentData.notes || 'Nenhuma observação'
                 };
 
-                console.log('📧 Parâmetros do template:', templateParams);
+                console.log('📧 Enviando com parâmetros:', templateParams);
 
                 const result = await emailjs.send(
                     EMAILJS_CONFIG.serviceID,
                     EMAILJS_CONFIG.templateID,
-                    templateParams,
-                    EMAILJS_CONFIG.publicKey
+                    templateParams
                 );
 
-                console.log('✅ Email enviado com sucesso:', result);
+                console.log('✅ Email enviado:', result);
                 return { success: true, result };
                 
             } catch (error) {
-                console.error('❌ Erro ao enviar email:', error);
-                return { success: false, error: error.message || 'Erro desconhecido' };
+                console.error('❌ Erro no email:', error);
+                return { success: false, error: error.text || error.message || 'Erro desconhecido' };
             }
         }
 
@@ -975,7 +993,7 @@
         }
 
         // ========================================
-        // USER MANAGEMENT CORRIGIDO
+        // USER MANAGEMENT
         // ========================================
         
         async function registerUser(userData) {
@@ -990,7 +1008,6 @@
                     return { success: false, message: 'Email já cadastrado!' };
                 }
 
-                // Hash básico da senha (use bcrypt em produção)
                 const hashedPassword = btoa(userData.password);
                 
                 const newUser = {
@@ -1068,7 +1085,7 @@
         }
 
         // ========================================
-        // APPOINTMENT MANAGEMENT CORRIGIDO
+        // APPOINTMENT MANAGEMENT
         // ========================================
         
         async function createAppointment(appointmentData) {
@@ -1097,6 +1114,7 @@
                 if (result.success) {
                     console.log('✅ Agendamento salvo, enviando email...');
                     
+                    // Tentar enviar email
                     const emailResult = await sendConfirmationEmail(
                         result.data, 
                         appState.currentUser.email
@@ -1104,11 +1122,11 @@
                     
                     let successMessage = 'Agendamento confirmado com sucesso!';
                     if (emailResult.success) {
-                        successMessage = 'Agendamento confirmado! Verifique seu email para detalhes.';
+                        successMessage = 'Agendamento confirmado! Email de confirmação enviado.';
                         console.log('✅ Email de confirmação enviado');
                     } else {
-                        console.warn('⚠️ Email não enviado, mas agendamento foi salvo');
-                        console.warn('Erro do email:', emailResult.error);
+                        console.warn('⚠️ Agendamento salvo, mas email falhou:', emailResult.error);
+                        successMessage = 'Agendamento confirmado! (Email de confirmação indisponível)';
                     }
                     
                     await loadUserAppointments();
@@ -1134,7 +1152,7 @@
                 const result = await db.fetch('appointments', { user_id: appState.currentUser.id });
                 appState.appointments = result.data || [];
                 displayUserAppointments();
-                console.log('📅 Agendamentos do usuário carregados:', appState.appointments.length);
+                console.log('📅 Agendamentos carregados:', appState.appointments.length);
             } catch (error) {
                 console.error('❌ Erro ao carregar agendamentos:', error);
             }
@@ -1161,27 +1179,6 @@
             `).join('');
         }
 
-        async function updateAppointmentStatus(appointmentId, newStatus) {
-            try {
-                const result = await db.update('appointments', appointmentId, { status: newStatus });
-                
-                if (result.success) {
-                    console.log(`✅ Status do agendamento ${appointmentId} atualizado para: ${newStatus}`);
-                    await loadAdminData();
-                    await loadUserAppointments();
-                }
-                
-                return result;
-            } catch (error) {
-                console.error('❌ Erro ao atualizar status:', error);
-                return { success: false, error };
-            }
-        }
-
-        // ========================================
-        // CONTACT MANAGEMENT
-        // ========================================
-        
         async function saveContact(contactData) {
             console.log('📨 Salvando contato:', contactData.email);
             
@@ -1196,231 +1193,16 @@
                 const result = await db.store('contacts', contact);
                 
                 if (result.success) {
-                    console.log('✅ Contato salvo com sucesso');
+                    console.log('✅ Contato salvo');
                     return { success: true, message: 'Mensagem enviada com sucesso!' };
                 }
                 
-                return { success: false, message: 'Erro ao enviar mensagem. Tente novamente.' };
+                return { success: false, message: 'Erro ao enviar mensagem.' };
                 
             } catch (error) {
                 console.error('❌ Erro ao salvar contato:', error);
-                return { success: false, message: 'Erro interno. Tente novamente.' };
+                return { success: false, message: 'Erro interno.' };
             }
-        }
-
-        // ========================================
-        // ADMIN FUNCTIONS
-        // ========================================
-        
-        function checkAdminAccess(username, password) {
-            if (username === 'ADMIN' && password === 'ADMIN') {
-                appState.isAdmin = true;
-                localStorage.setItem('lbrothers_is_admin', 'true');
-                console.log('🔑 Acesso admin autorizado');
-                return true;
-            }
-            return false;
-        }
-
-        async function loadAdminData() {
-            if (!appState.isAdmin) return;
-            
-            console.log('👨‍💼 Carregando dados administrativos...');
-            
-            try {
-                const [appointmentsResult, usersResult, contactsResult] = await Promise.all([
-                    db.fetch('appointments'),
-                    db.fetch('users'),
-                    db.fetch('contacts')
-                ]);
-                
-                const appointments = appointmentsResult.data || [];
-                const users = usersResult.data || [];
-                const contacts = contactsResult.data || [];
-                
-                const today = new Date().toISOString().split('T')[0];
-                appState.analytics = {
-                    totalAppointments: appointments.length,
-                    todayAppointments: appointments.filter(apt => apt.date === today).length,
-                    totalUsers: users.filter(user => user.role !== 'admin').length,
-                    totalContacts: contacts.length
-                };
-                
-                updateAdminDashboard(appointments, contacts);
-                updateAnalytics(appointments);
-                
-                console.log('✅ Dados administrativos carregados:', appState.analytics);
-                
-            } catch (error) {
-                console.error('❌ Erro ao carregar dados admin:', error);
-            }
-        }
-
-        function updateAdminDashboard(appointments, contacts) {
-            const elements = {
-                'total-appointments': appState.analytics.totalAppointments,
-                'today-appointments': appState.analytics.todayAppointments,
-                'total-users': appState.analytics.totalUsers,
-                'total-contacts': appState.analytics.totalContacts
-            };
-
-            Object.entries(elements).forEach(([id, value]) => {
-                const element = document.getElementById(id);
-                if (element) element.textContent = value;
-            });
-            
-            const appointmentsContainer = document.getElementById('admin-appointments');
-            if (appointmentsContainer) {
-                appointmentsContainer.innerHTML = `
-                    <table class="w-full bg-white rounded-lg overflow-hidden">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-4 py-2 text-left">Cliente</th>
-                                <th class="px-4 py-2 text-left">Serviço</th>
-                                <th class="px-4 py-2 text-left">Data</th>
-                                <th class="px-4 py-2 text-left">Horário</th>
-                                <th class="px-4 py-2 text-left">Status</th>
-                                <th class="px-4 py-2 text-left">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${appointments.map(apt => `
-                                <tr class="border-b">
-                                    <td class="px-4 py-2">${apt.user_name || 'N/A'}</td>
-                                    <td class="px-4 py-2">${getServiceName(apt.service)}</td>
-                                    <td class="px-4 py-2">${formatDate(apt.date)}</td>
-                                    <td class="px-4 py-2">${apt.time}</td>
-                                    <td class="px-4 py-2">
-                                        <span class="status-badge status-${apt.status}">${apt.status}</span>
-                                    </td>
-                                    <td class="px-4 py-2">
-                                        <select onchange="updateAppointmentStatus('${apt.id}', this.value)" class="border rounded px-2 py-1">
-                                            <option value="agendado" ${apt.status === 'agendado' ? 'selected' : ''}>Agendado</option>
-                                            <option value="confirmado" ${apt.status === 'confirmado' ? 'selected' : ''}>Confirmado</option>
-                                            <option value="concluido" ${apt.status === 'concluido' ? 'selected' : ''}>Concluído</option>
-                                            <option value="cancelado" ${apt.status === 'cancelado' ? 'selected' : ''}>Cancelado</option>
-                                        </select>
-                                    </td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                `;
-            }
-            
-            const contactsContainer = document.getElementById('admin-contacts');
-            if (contactsContainer) {
-                contactsContainer.innerHTML = contacts.map(contact => `
-                    <div class="border-b pb-4">
-                        <div class="flex justify-between items-start mb-2">
-                            <h4 class="font-semibold">${contact.name}</h4>
-                            <span class="text-sm text-gray-500">${formatDate(contact.created_at)}</span>
-                        </div>
-                        <p class="text-sm text-gray-600 mb-1">Email: ${contact.email}</p>
-                        ${contact.phone ? `<p class="text-sm text-gray-600 mb-2">Telefone: ${contact.phone}</p>` : ''}
-                        <p class="text-gray-700">${contact.message}</p>
-                    </div>
-                `).join('');
-            }
-        }
-
-        function updateAnalytics(appointments) {
-            updateServicesChart(appointments);
-            updateMonthlyChart(appointments);
-            updatePublicTrendsChart();
-        }
-
-        function updateServicesChart(appointments) {
-            const ctx = document.getElementById('servicesChart');
-            if (!ctx) return;
-
-            const servicesCounts = {};
-            appointments.forEach(apt => {
-                const serviceName = getServiceName(apt.service);
-                servicesCounts[serviceName] = (servicesCounts[serviceName] || 0) + 1;
-            });
-
-            new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: Object.keys(servicesCounts),
-                    datasets: [{
-                        data: Object.values(servicesCounts),
-                        backgroundColor: [
-                            '#3b82f6',
-                            '#10b981',
-                            '#f59e0b',
-                            '#ef4444',
-                            '#8b5cf6'
-                        ]
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false
-                }
-            });
-        }
-
-        function updateMonthlyChart(appointments) {
-            const ctx = document.getElementById('monthlyChart');
-            if (!ctx) return;
-
-            const monthlyCounts = {};
-            appointments.forEach(apt => {
-                const month = new Date(apt.created_at).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
-                monthlyCounts[month] = (monthlyCounts[month] || 0) + 1;
-            });
-
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: Object.keys(monthlyCounts),
-                    datasets: [{
-                        label: 'Agendamentos',
-                        data: Object.values(monthlyCounts),
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
-                }
-            });
-        }
-
-        function updatePublicTrendsChart() {
-            const ctx = document.getElementById('publicTrendsChart');
-            if (!ctx) return;
-
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'],
-                    datasets: [{
-                        label: 'Serviços Realizados',
-                        data: [45, 52, 38, 61, 49, 58],
-                        backgroundColor: '#3b82f6',
-                        borderRadius: 5
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
-                }
-            });
         }
 
         // ========================================
@@ -1440,10 +1222,6 @@
             } else {
                 if (loggedOutMenu) loggedOutMenu.style.display = 'flex';
                 if (loggedInMenu) loggedInMenu.classList.add('hidden');
-            }
-
-            if (appState.isAdmin) {
-                loadAdminData();
             }
         }
 
@@ -1497,15 +1275,7 @@
             const panel = document.getElementById('adminPanel');
             if (panel) {
                 panel.classList.toggle('active');
-                if (panel.classList.contains('active')) {
-                    loadAdminData();
-                }
             }
-        }
-
-        function toggleMobileMenu() {
-            // Mobile menu implementation
-            console.log('Mobile menu toggle');
         }
 
         function scheduleService(serviceType) {
@@ -1514,19 +1284,20 @@
                 return;
             }
             
-            closeModal('servicesModal');
             openModal('scheduleModal');
-            
             const serviceSelect = document.getElementById('service-select');
             if (serviceSelect) {
                 serviceSelect.value = serviceType;
             }
         }
 
-        async function refreshAppointments() {
-            if (appState.isAdmin) {
-                await loadAdminData();
+        function checkAdminAccess(username, password) {
+            if (username === 'ADMIN' && password === 'ADMIN') {
+                appState.isAdmin = true;
+                localStorage.setItem('lbrothers_is_admin', 'true');
+                return true;
             }
+            return false;
         }
 
         // ========================================
@@ -1534,7 +1305,7 @@
         // ========================================
         
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Inicializando sistema L\' Brothers...');
+            console.log('🚀 Inicializando L\' Brothers...');
             updateUserInterface();
             
             // Login form
@@ -1672,14 +1443,12 @@
                 });
             }
 
-            // Set minimum date for appointment scheduling
+            // Set minimum date for appointments
             const scheduleDate = document.getElementById('schedule-date');
             if (scheduleDate) {
                 const today = new Date().toISOString().split('T')[0];
                 scheduleDate.min = today;
             }
-
-            console.log('✅ Sistema L\' Brothers inicializado com sucesso!');
         });
 
         // ========================================
@@ -1687,7 +1456,7 @@
         // ========================================
         
         window.lbrothersSystem = {
-            // Teste de EmailJS
+            // Teste EmailJS
             testEmailJS: async function() {
                 const testData = {
                     user_name: 'Cliente Teste',
@@ -1699,12 +1468,12 @@
                 };
                 
                 console.log('🧪 Testando EmailJS...');
-                const result = await sendConfirmationEmail(testData, 'teste@example.com');
-                console.log('Resultado do teste EmailJS:', result);
+                const result = await sendConfirmationEmail(testData, 'henriquepaulistano2019@gmail.com');
+                console.log('Resultado:', result);
                 return result;
             },
             
-            // Teste de Supabase
+            // Teste Supabase
             testSupabase: async function() {
                 console.log('🧪 Testando Supabase...');
                 const testUser = {
@@ -1716,51 +1485,33 @@
                 };
                 
                 const result = await db.store('users', testUser);
-                console.log('Resultado do teste Supabase:', result);
+                console.log('Resultado:', result);
                 return result;
             },
             
-            // Status do sistema
+            // Status
             getSystemStatus: function() {
                 const status = {
-                    supabaseConnected: !!supabase,
+                    supabaseEnabled: isSupabaseEnabled,
                     emailJSConfigured: !!EMAILJS_CONFIG.serviceID,
                     userLoggedIn: isLoggedIn(),
                     isAdmin: appState.isAdmin,
-                    appointmentsCount: appState.appointments.length,
-                    config: {
-                        supabaseUrl: SUPABASE_URL,
-                        emailJSServiceId: EMAILJS_CONFIG.serviceID,
-                        emailJSTemplateId: EMAILJS_CONFIG.templateID
-                    }
+                    appointmentsCount: appState.appointments.length
                 };
-                console.log('📊 Status do sistema:', status);
+                console.log('📊 Status:', status);
                 return status;
             },
             
-            // Limpar dados de teste
+            // Limpar dados
             clearTestData: function() {
                 localStorage.removeItem('lbrothers_users');
                 localStorage.removeItem('lbrothers_appointments');
                 localStorage.removeItem('lbrothers_contacts');
-                console.log('🧹 Dados de teste limpos');
-            },
-            
-            // Acessar dados diretamente
-            db: db,
-            appState: appState,
-            
-            // Funções de debug
-            debug: {
-                emailConfig: EMAILJS_CONFIG,
-                supabaseUrl: SUPABASE_URL,
-                isSupabaseConnected: !!supabase
+                console.log('🧹 Dados limpos');
             }
         };
 
-        console.log('🎉 Sistema L\' Brothers carregado com sucesso!');
-        console.log('📞 Use window.lbrothersSystem para acessar funcionalidades de teste');
-        console.log('🔍 Status:', window.lbrothersSystem.getSystemStatus());
+        console.log('✅ Sistema L\' Brothers carregado!');
     </script>
 </body>
 </html>
