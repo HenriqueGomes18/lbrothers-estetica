@@ -8,11 +8,8 @@
     <meta name="description" content="Estética automotiva premium em São Paulo. Agendamento online, lavagem, polimento e detalhamento profissional.">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Supabase Client -->
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <!-- Chart.js para análises -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chart.js/3.9.1/chart.min.js"></script>
-    <!-- EmailJS -->
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <style>
         .gradient-bg {
@@ -22,1496 +19,680 @@
             transform: translateY(-5px);
             box-shadow: 0 10px 20px rgba(0,0,0,0.2);
         }
-        
-        /* FIX: Floating labels apenas dentro de input-container */
-        .input-container {
-            position: relative;
-            margin-bottom: 20px;
+        /* FIX: Floating labels apenas para telas maiores */
+        @media (min-width: 768px) {
+            .floating-label-input:focus ~ .floating-label,
+            .floating-label-input:not(:placeholder-shown) ~ .floating-label {
+                transform: translateY(-120%);
+                font-size: 0.75rem;
+                color: #A0AEC0;
+            }
+            .floating-label-input:not(:placeholder-shown) {
+                padding-top: 1.5rem;
+            }
         }
-        
-        .input-container .floating-label {
-            position: absolute;
-            pointer-events: none;
-            left: 12px;
-            top: 12px;
-            transition: 0.2s ease all;
-            color: #9ca3af;
-            font-size: 14px;
-            background: transparent;
-        }
-        
-        .input-container input:focus ~ .floating-label,
-        .input-container input:not(:placeholder-shown) ~ .floating-label,
-        .input-container textarea:focus ~ .floating-label,
-        .input-container textarea:not(:placeholder-shown) ~ .floating-label {
-            top: -8px;
-            left: 10px;
-            font-size: 12px;
-            background: white;
-            padding: 0 5px;
-            color: #3b82f6;
-        }
-        
-        /* Prevenir floating labels fora de containers */
-        body > .floating-label,
-        .floating-label:not(.input-container .floating-label) {
-            display: none !important;
-        }
-        
-        .tab-content {
-            display: none;
-        }
-        .tab-content.active {
-            display: block;
-            animation: fadeIn 0.5s;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        .loading {
-            display: none;
-        }
-        .loading.active {
-            display: inline-block;
-        }
-        .success-message {
-            background: #10b981;
-            color: white;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            margin-bottom: 1rem;
-        }
-        .error-message {
-            background: #ef4444;
-            color: white;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            margin-bottom: 1rem;
-        }
-        .spinner {
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid #3498db;
-            border-radius: 50%;
-            width: 16px;
-            height: 16px;
-            animation: spin 2s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .admin-panel {
-            display: none;
-        }
-        .admin-panel.active {
-            display: block;
-        }
-        .dashboard-card {
-            background: white;
-            border-radius: 8px;
-            padding: 1.5rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .status-badge {
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-        .status-agendado { background: #dbeafe; color: #1e40af; }
-        .status-confirmado { background: #d1fae5; color: #065f46; }
-        .status-concluido { background: #f3f4f6; color: #374151; }
-        .status-cancelado { background: #fecaca; color: #991b1b; }
     </style>
 </head>
-<body class="font-sans bg-gray-100">
-    
-    <!-- Header -->
-    <header class="gradient-bg text-white shadow-lg">
-        <div class="container mx-auto px-4 py-6">
-            <div class="flex justify-between items-center">
-                <div class="flex items-center space-x-2">
-                    <i class="fas fa-car-side text-3xl text-blue-400" aria-hidden="true"></i>
-                    <span class="text-2xl font-bold text-white">L' Brothers</span>
-                </div>
-        
-                <nav class="hidden md:flex space-x-8" role="navigation">
-                    <a href="#services" class="hover:text-blue-300 transition">Serviços</a>
-                    <a href="#about" class="hover:text-blue-300 transition">Sobre Nós</a>
-                    <a href="#contact" class="hover:text-blue-300 transition">Contato</a>
-                    <a href="#analytics" class="hover:text-blue-300 transition">Análises</a>
-                    
-                    <div id="user-menu-logged-out">
-                        <button onclick="openModal('loginModal')" class="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-full transition">
-                            Área do Cliente
-                        </button>
-                        <button onclick="openModal('adminLoginModal')" class="bg-purple-500 hover:bg-purple-600 px-4 py-2 rounded-full transition">
-                            Admin
-                        </button>
-                    </div>
-                    
-                    <div id="user-menu-logged-in" class="hidden">
-                        <span id="user-name" class="mr-4"></span>
-                        <button onclick="toggleUserDashboard()" class="bg-green-500 hover:bg-green-600 px-4 py-2 rounded-full transition">
-                            Dashboard
-                        </button>
-                        <button onclick="logout()" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-full transition">
-                            Sair
-                        </button>
-                    </div>
-                </nav>
+<body class="bg-gray-900 text-gray-200 font-sans leading-normal tracking-normal gradient-bg">
 
-                <button class="md:hidden text-2xl" onclick="toggleMobileMenu()">
-                    <i class="fas fa-bars"></i>
+    <nav class="bg-gray-800 p-4 fixed w-full z-10 top-0">
+        <div class="container mx-auto flex items-center justify-between flex-wrap">
+            <div class="flex items-center flex-shrink-0 text-white mr-6">
+                <span class="font-semibold text-2xl tracking-tight">L' Brothers</span>
+            </div>
+            <div class="block lg:hidden">
+                <button class="flex items-center px-3 py-2 border rounded text-gray-200 border-gray-400 hover:text-white hover:border-white" id="nav-toggle">
+                    <svg class="fill-current h-3 w-3" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><title>Menu</title><path d="M0 3h20v2H0V3zm0 6h20v2H0V9zm0 6h20v2H0v-2z"/></svg>
                 </button>
             </div>
+            <div class="w-full flex-grow lg:flex lg:items-center lg:w-auto hidden pt-6 lg:pt-0" id="nav-content">
+                <div class="text-sm lg:flex-grow">
+                    <a href="#inicio" class="block mt-4 lg:inline-block lg:mt-0 text-gray-200 hover:text-white mr-4">
+                        Início
+                    </a>
+                    <a href="#servicos" class="block mt-4 lg:inline-block lg:mt-0 text-gray-200 hover:text-white mr-4">
+                        Serviços
+                    </a>
+                    <a href="#depoimentos" class="block mt-4 lg:inline-block lg:mt-0 text-gray-200 hover:text-white mr-4">
+                        Depoimentos
+                    </a>
+                    <a href="#contato" class="block mt-4 lg:inline-block lg:mt-0 text-gray-200 hover:text-white">
+                        Contato
+                    </a>
+                </div>
+                <div>
+                    <button id="cta-button" class="inline-block text-sm px-4 py-2 leading-none border rounded text-white border-white hover:border-transparent hover:text-gray-900 hover:bg-white mt-4 lg:mt-0">Área do Cliente</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <header id="inicio" class="pt-24 md:pt-36 pb-12 flex flex-col justify-center items-center text-center px-4">
+        <h1 class="text-4xl md:text-5xl font-bold leading-tight">Estética Automotiva Premium</h1>
+        <p class="mt-4 text-xl md:text-2xl text-gray-400">Transforme seu carro em uma obra de arte. Detalhamento e proteção de alto nível.</p>
+        <div class="mt-8">
+            <a href="#agendamento" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300">Agende seu Horário</a>
         </div>
     </header>
 
-    <!-- Connection Status -->
-    <div id="connection-status" class="hidden bg-yellow-100 border-l-4 border-yellow-500 p-4">
-        <div class="container mx-auto">
-            <p class="text-yellow-700">
-                <i class="fas fa-exclamation-triangle mr-2"></i>
-                <span id="connection-message">Verificando conexão...</span>
-            </p>
-        </div>
-    </div>
-
-    <!-- User Dashboard -->
-    <div id="userDashboard" class="hidden bg-white shadow-lg border-b">
-        <div class="container mx-auto px-4 py-6">
-            <h2 class="text-2xl font-bold mb-4">Meus Agendamentos</h2>
-            <div id="user-appointments" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <!-- Appointments will be loaded here -->
+    <section id="servicos" class="py-12 md:py-24 container mx-auto px-4">
+        <h2 class="text-3xl md:text-4xl font-bold text-center mb-12">Nossos Serviços</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div class="service-card p-6 bg-gray-800 rounded-lg shadow-xl text-center transition-all duration-300">
+                <i class="fas fa-car-wash text-5xl text-blue-400 mb-4"></i>
+                <h3 class="font-bold text-xl mb-2">Lavagem Detalhada Premium</h3>
+                <p class="text-gray-400 text-sm">Limpeza completa e minuciosa, com produtos de pH neutro e técnicas que preservam a pintura.</p>
             </div>
-            
-            <div class="mt-6">
-                <button onclick="openModal('scheduleModal')" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg transition">
-                    Novo Agendamento
-                </button>
+            <div class="service-card p-6 bg-gray-800 rounded-lg shadow-xl text-center transition-all duration-300">
+                <i class="fas fa-sparkles text-5xl text-yellow-400 mb-4"></i>
+                <h3 class="font-bold text-xl mb-2">Polimento Técnico</h3>
+                <p class="text-gray-400 text-sm">Remoção de riscos e imperfeições, devolvendo o brilho e a profundidade da pintura original.</p>
             </div>
-        </div>
-    </div>
-
-    <!-- Admin Panel -->
-    <div id="adminPanel" class="admin-panel bg-gray-50">
-        <div class="container mx-auto px-4 py-8">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-3xl font-bold">Painel Administrativo</h2>
-                <button onclick="toggleAdminPanel()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg">
-                    Fechar Painel
-                </button>
+            <div class="service-card p-6 bg-gray-800 rounded-lg shadow-xl text-center transition-all duration-300">
+                <i class="fas fa-shield-alt text-5xl text-red-400 mb-4"></i>
+                <h3 class="font-bold text-xl mb-2">Proteção Cerâmica</h3>
+                <p class="text-gray-400 text-sm">Aplicação de revestimento cerâmico para proteção duradoura contra intempéries e arranhões.</p>
             </div>
-            
-            <!-- Dashboard Stats -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                <div class="dashboard-card">
-                    <h3 class="text-lg font-semibold text-gray-700">Total Agendamentos</h3>
-                    <p id="total-appointments" class="text-3xl font-bold text-blue-600">0</p>
-                </div>
-                <div class="dashboard-card">
-                    <h3 class="text-lg font-semibold text-gray-700">Agendamentos Hoje</h3>
-                    <p id="today-appointments" class="text-3xl font-bold text-green-600">0</p>
-                </div>
-                <div class="dashboard-card">
-                    <h3 class="text-lg font-semibold text-gray-700">Total Clientes</h3>
-                    <p id="total-users" class="text-3xl font-bold text-purple-600">0</p>
-                </div>
-                <div class="dashboard-card">
-                    <h3 class="text-lg font-semibold text-gray-700">Mensagens</h3>
-                    <p id="total-contacts" class="text-3xl font-bold text-yellow-600">0</p>
-                </div>
+            <div class="service-card p-6 bg-gray-800 rounded-lg shadow-xl text-center transition-all duration-300">
+                <i class="fas fa-couch text-5xl text-purple-400 mb-4"></i>
+                <h3 class="font-bold text-xl mb-2">Higienização Interna</h3>
+                <p class="text-gray-400 text-sm">Limpeza profunda e esterilização de estofados, carpetes e painel, eliminando odores e bactérias.</p>
             </div>
-            
-            <!-- Appointments Management -->
-            <div class="dashboard-card mb-8">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-bold">Gerenciar Agendamentos</h3>
-                    <button onclick="refreshAppointments()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
-                        <i class="fas fa-refresh mr-2"></i>Atualizar
-                    </button>
-                </div>
-                <div id="admin-appointments" class="overflow-x-auto">
-                    <!-- Appointments table will be loaded here -->
-                </div>
+            <div class="service-card p-6 bg-gray-800 rounded-lg shadow-xl text-center transition-all duration-300">
+                <i class="fas fa-glass-whiskey text-5xl text-gray-400 mb-4"></i>
+                <h3 class="font-bold text-xl mb-2">Vitrificação de Vidros</h3>
+                <p class="text-gray-400 text-sm">Melhora a visibilidade na chuva e protege os vidros contra manchas e contaminações.</p>
             </div>
-            
-            <!-- Analytics -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                <div class="dashboard-card">
-                    <h3 class="text-xl font-bold mb-4">Serviços Mais Solicitados</h3>
-                    <canvas id="servicesChart" width="400" height="200"></canvas>
-                </div>
-                <div class="dashboard-card">
-                    <h3 class="text-xl font-bold mb-4">Agendamentos por Mês</h3>
-                    <canvas id="monthlyChart" width="400" height="200"></canvas>
-                </div>
-            </div>
-            
-            <!-- Contacts Management -->
-            <div class="dashboard-card">
-                <h3 class="text-xl font-bold mb-4">Mensagens de Contato</h3>
-                <div id="admin-contacts" class="space-y-4">
-                    <!-- Contacts will be loaded here -->
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Hero Section -->
-    <section class="gradient-bg text-white py-20">
-        <div class="container mx-auto px-4 flex flex-col md:flex-row items-center">
-            <div class="md:w-1/2 mb-10 md:mb-0">
-                <h1 class="text-4xl md:text-5xl font-bold mb-6">Transforme seu veículo em uma obra de arte</h1>
-                <p class="text-xl mb-8 text-gray-300">Na L' Brothers, cuidamos do seu carro como se fosse nosso. Serviços premium de estética automotiva para deixar seu veículo impecável.</p>
-                <div class="flex space-x-4">
-                    <button onclick="openModal('loginModal')" class="bg-blue-500 hover:bg-blue-600 px-6 py-3 rounded-full font-medium transition">Agendar Serviço</button>
-                    <button onclick="openModal('servicesModal')" class="bg-transparent border-2 border-white hover:bg-white hover:text-gray-900 px-6 py-3 rounded-full font-medium transition">Nossos Serviços</button>
-                </div>
-            </div>
-            <div class="md:w-1/2 flex justify-center">
-                <img src="https://thumbs.dreamstime.com/b/fechamento-da-roda-do-carro-sendo-lavada-em-um-detalhador-autom%C3%A1tico-processo-detalhado-de-assist%C3%AAncia-captado-arm%C3%A1rio-309647328.jpg?w=992" 
-                     alt="Processo de lavagem profissional de veículo" 
-                     class="rounded-lg shadow-2xl max-w-full h-auto">
+            <div class="service-card p-6 bg-gray-800 rounded-lg shadow-xl text-center transition-all duration-300">
+                <i class="fas fa-engine text-5xl text-orange-400 mb-4"></i>
+                <h3 class="font-bold text-xl mb-2">Detalhamento de Motor</h3>
+                <p class="text-gray-400 text-sm">Limpeza e proteção seguras para o motor, sem danificar componentes elétricos ou mecânicos.</p>
             </div>
         </div>
     </section>
 
-    <!-- Services Section -->
-    <section id="services" class="py-16 bg-white">
+    <section id="depoimentos" class="py-12 md:py-24 bg-gray-800">
         <div class="container mx-auto px-4">
-            <h2 class="text-3xl font-bold text-center mb-12">Nossos Serviços Premium</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div class="service-card bg-white rounded-lg shadow-md overflow-hidden transition duration-300">
-                    <div class="h-48 overflow-hidden">
-                        <img src="https://images.unsplash.com/photo-1607860108855-64acf2078ed9?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80" alt="Lavagem Premium" class="w-full h-full object-cover">
-                    </div>
-                    <div class="p-6">
-                        <h3 class="text-xl font-semibold mb-2">Lavagem Premium</h3>
-                        <p class="text-gray-600 mb-4">Lavagem completa com produtos importados e acabamento perfeito.</p>
-                        <div class="flex justify-between items-center">
-                            <span class="text-blue-500 font-bold">R$ 120 - R$ 250</span>
-                            <button onclick="scheduleService('lavagem-premium')" class="text-blue-500 hover:text-blue-700 font-medium">Agendar</button>
+            <h2 class="text-3xl md:text-4xl font-bold text-center mb-12">O que nossos clientes dizem</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="bg-gray-700 p-6 rounded-lg shadow-xl">
+                    <p class="text-lg italic text-gray-300 mb-4">"O trabalho foi impecável! Meu carro parece novo de fábrica. Recomendo a todos!"</p>
+                    <div class="flex items-center">
+                        <img class="w-12 h-12 rounded-full mr-4" src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-1.2.1&auto=format&fit=crop&w=128&h=128&q=80" alt="Foto de cliente">
+                        <div class="text-sm">
+                            <p class="text-white font-bold">João Silva</p>
+                            <p class="text-gray-400">Cliente Satisfeito</p>
                         </div>
                     </div>
+                </div>
+                <div class="bg-gray-700 p-6 rounded-lg shadow-xl">
+                    <p class="text-lg italic text-gray-300 mb-4">"A higienização interna superou minhas expectativas. O cheiro de carro novo está de volta!"</p>
+                    <div class="flex items-center">
+                        <img class="w-12 h-12 rounded-full mr-4" src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?ixlib=rb-1.2.1&auto=format&fit=crop&w=128&h=128&q=80" alt="Foto de cliente">
+                        <div class="text-sm">
+                            <p class="text-white font-bold">Maria Fernanda</p>
+                            <p class="text-gray-400">Proprietária de Sedan</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-700 p-6 rounded-lg shadow-xl">
+                    <p class="text-lg italic text-gray-300 mb-4">"O polimento removeu todos os riscos. Agora o carro brilha como um espelho. Atendimento excelente!"</p>
+                    <div class="flex items-center">
+                        <img class="w-12 h-12 rounded-full mr-4" src="https://images.unsplash.com/photo-1507003211169-0a0ed7246f2d?ixlib=rb-1.2.1&auto=format&fit=crop&w=128&h=128&q=80" alt="Foto de cliente">
+                        <div class="text-sm">
+                            <p class="text-white font-bold">Pedro Henrique</p>
+                            <p class="text-gray-400">Amante de Carros</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="contato" class="py-12 md:py-24 container mx-auto px-4">
+        <h2 class="text-3xl md:text-4xl font-bold text-center mb-12">Entre em Contato</h2>
+        <div class="max-w-xl mx-auto bg-gray-800 p-8 rounded-lg shadow-xl">
+            <p id="contact-message" class="text-center text-green-400 mb-4 hidden"></p>
+            <form id="contact-form" class="space-y-6">
+                <div class="relative">
+                    <input type="text" id="contact_name" name="user_name" placeholder=" " required class="floating-label-input w-full px-4 py-3 bg-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600">
+                    <label for="contact_name" class="floating-label absolute left-4 top-4 text-gray-400 transition-all duration-200 ease-in-out pointer-events-none">Seu Nome</label>
+                </div>
+                <div class="relative">
+                    <input type="email" id="contact_email" name="user_email" placeholder=" " required class="floating-label-input w-full px-4 py-3 bg-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600">
+                    <label for="contact_email" class="floating-label absolute left-4 top-4 text-gray-400 transition-all duration-200 ease-in-out pointer-events-none">Seu E-mail</label>
+                </div>
+                <div class="relative">
+                    <textarea id="contact_message_area" name="message" placeholder=" " required rows="4" class="floating-label-input w-full px-4 py-3 bg-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"></textarea>
+                    <label for="contact_message_area" class="floating-label absolute left-4 top-4 text-gray-400 transition-all duration-200 ease-in-out pointer-events-none">Sua Mensagem</label>
+                </div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300">Enviar Mensagem</button>
+            </form>
+        </div>
+    </section>
+
+    <footer class="bg-gray-900 text-center py-6 text-gray-500 text-sm">
+        <p>© 2024 L' Brothers. Todos os direitos reservados.</p>
+    </footer>
+
+    <div id="modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-gray-800 rounded-lg p-6 w-full max-w-lg relative shadow-xl">
+            <button id="modal-close" class="absolute top-4 right-4 text-gray-400 hover:text-white">&times;</button>
+            
+            <div id="modal-content">
+                <div class="flex justify-around mb-6">
+                    <button id="tab-login" class="tab-button px-4 py-2 border-b-2 border-blue-500 text-blue-500 font-semibold">Login</button>
+                    <button id="tab-register" class="tab-button px-4 py-2 border-b-2 border-transparent text-gray-400 font-semibold">Cadastro</button>
+                    <button id="tab-appointments" class="tab-button px-4 py-2 border-b-2 border-transparent text-gray-400 font-semibold hidden">Meus Agendamentos</button>
+                    <button id="tab-admin" class="tab-button px-4 py-2 border-b-2 border-transparent text-gray-400 font-semibold hidden">Admin</button>
                 </div>
                 
-                <div class="service-card bg-white rounded-lg shadow-md overflow-hidden transition duration-300">
-                    <div class="h-48 overflow-hidden">
-                        <img src="https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2?ixlib=rb-4.0.3&auto=format&fit=crop&w=1528&q=80" alt="Polimento" class="w-full h-full object-cover">
-                    </div>
-                    <div class="p-6">
-                        <h3 class="text-xl font-semibold mb-2">Polimento Cristalizado</h3>
-                        <p class="text-gray-600 mb-4">Remoção de riscos e imperfeições, proteção duradoura.</p>
-                        <div class="flex justify-between items-center">
-                            <span class="text-blue-500 font-bold">R$ 350 - R$ 600</span>
-                            <button onclick="scheduleService('polimento-cristalizado')" class="text-blue-500 hover:text-blue-700 font-medium">Agendar</button>
+                <div id="login-tab" class="space-y-6">
+                    <form id="login-form">
+                        <p id="login-message" class="text-center text-red-400 mb-4 hidden"></p>
+                        <div class="relative mb-6">
+                            <input type="email" id="login_email" placeholder=" " required class="floating-label-input w-full px-4 py-3 bg-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600">
+                            <label for="login_email" class="floating-label absolute left-4 top-4 text-gray-400 transition-all duration-200 ease-in-out pointer-events-none">E-mail</label>
                         </div>
-                    </div>
+                        <div class="relative mb-6">
+                            <input type="password" id="login_password" placeholder=" " required class="floating-label-input w-full px-4 py-3 bg-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600">
+                            <label for="login_password" class="floating-label absolute left-4 top-4 text-gray-400 transition-all duration-200 ease-in-out pointer-events-none">Senha</label>
+                        </div>
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300">Login</button>
+                    </form>
+                </div>
+
+                <div id="register-tab" class="hidden space-y-6">
+                    <form id="register-form">
+                        <p id="register-message" class="text-center text-red-400 mb-4 hidden"></p>
+                        <div class="relative mb-6">
+                            <input type="text" id="register_name" placeholder=" " required class="floating-label-input w-full px-4 py-3 bg-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600">
+                            <label for="register_name" class="floating-label absolute left-4 top-4 text-gray-400 transition-all duration-200 ease-in-out pointer-events-none">Nome</label>
+                        </div>
+                        <div class="relative mb-6">
+                            <input type="email" id="register_email" placeholder=" " required class="floating-label-input w-full px-4 py-3 bg-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600">
+                            <label for="register_email" class="floating-label absolute left-4 top-4 text-gray-400 transition-all duration-200 ease-in-out pointer-events-none">E-mail</label>
+                        </div>
+                        <div class="relative mb-6">
+                            <input type="tel" id="register_phone" placeholder=" " required class="floating-label-input w-full px-4 py-3 bg-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600">
+                            <label for="register_phone" class="floating-label absolute left-4 top-4 text-gray-400 transition-all duration-200 ease-in-out pointer-events-none">Telefone</label>
+                        </div>
+                        <div class="relative mb-6">
+                            <input type="password" id="register_password" placeholder=" " required class="floating-label-input w-full px-4 py-3 bg-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600">
+                            <label for="register_password" class="floating-label absolute left-4 top-4 text-gray-400 transition-all duration-200 ease-in-out pointer-events-none">Senha</label>
+                        </div>
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300">Cadastrar</button>
+                    </form>
                 </div>
                 
-                <div class="service-card bg-white rounded-lg shadow-md overflow-hidden transition duration-300">
-                    <div class="h-48 overflow-hidden">
-                        <img src="https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80" alt="Detalhamento" class="w-full h-full object-cover">
+                <div id="appointments-tab" class="hidden space-y-6">
+                    <div id="appointments-list-container">
+                        <h3 class="text-xl font-bold mb-4">Meus Agendamentos</h3>
+                        <p id="no-appointments-message" class="text-gray-400">Nenhum agendamento encontrado.</p>
+                        <div id="appointments-list" class="space-y-4"></div>
+                        <button id="schedule-new-button" class="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300">Agendar Novo Serviço</button>
                     </div>
-                    <div class="p-6">
-                        <h3 class="text-xl font-semibold mb-2">Detalhamento Interno</h3>
-                        <p class="text-gray-600 mb-4">Limpeza profunda com higienização completa.</p>
-                        <div class="flex justify-between items-center">
-                            <span class="text-blue-500 font-bold">R$ 250 - R$ 400</span>
-                            <button onclick="scheduleService('detalhamento-interno')" class="text-blue-500 hover:text-blue-700 font-medium">Agendar</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
 
-    <!-- About Section -->
-    <section id="about" class="py-16 bg-gray-100">
-        <div class="container mx-auto px-4">
-            <div class="flex flex-col md:flex-row items-center">
-                <div class="md:w-1/2 mb-10 md:mb-0 md:pr-10">
-                    <h2 class="text-3xl font-bold mb-6">Sobre a L' Brothers</h2>
-                    <p class="text-gray-700 mb-4">Fundada em 2020 por dois irmãos apaixonados por carros, a L' Brothers nasceu com o objetivo de oferecer serviços de estética automotiva com padrão de excelência.</p>
-                    <p class="text-gray-700 mb-4">Com profissionais altamente qualificados e equipamentos de última geração, garantimos resultados que superam as expectativas dos nossos clientes.</p>
-                    <p class="text-gray-700 mb-6">Nossa missão é preservar e realçar a beleza do seu veículo, utilizando apenas produtos premium e técnicas avançadas de trabalho.</p>
-                    <div class="flex space-x-4">
-                        <div class="bg-white p-4 rounded-lg shadow-md text-center">
-                            <div class="text-blue-500 text-3xl mb-2" aria-hidden="true">
-                                <i class="fas fa-car"></i>
+                    <div id="schedule-form-container" class="hidden">
+                        <h3 class="text-xl font-bold mb-4">Agendar Serviço</h3>
+                        <form id="schedule-form" class="space-y-6">
+                            <p id="schedule-message" class="text-center text-green-400 mb-4 hidden"></p>
+                            <div class="relative">
+                                <select id="service-select" name="service" required class="w-full px-4 py-3 bg-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600">
+                                    <option value="" disabled selected>Selecione um Serviço</option>
+                                    <option value="Lavagem Detalhada Premium">Lavagem Detalhada Premium</option>
+                                    <option value="Polimento Técnico">Polimento Técnico</option>
+                                    <option value="Proteção Cerâmica">Proteção Cerâmica</option>
+                                    <option value="Higienização Interna">Higienização Interna</option>
+                                    <option value="Vitrificação de Vidros">Vitrificação de Vidros</option>
+                                    <option value="Detalhamento de Motor">Detalhamento de Motor</option>
+                                </select>
                             </div>
-                            <h3 class="font-semibold">+700</h3>
-                            <p class="text-sm text-gray-600">Veículos atendidos</p>
-                        </div>
-                        <div class="bg-white p-4 rounded-lg shadow-md text-center">
-                            <div class="text-blue-500 text-3xl mb-2" aria-hidden="true">
-                                <i class="fas fa-star"></i>
+                            <div class="relative">
+                                <input type="text" id="vehicle" name="vehicle" placeholder=" " required class="floating-label-input w-full px-4 py-3 bg-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600">
+                                <label for="vehicle" class="floating-label absolute left-4 top-4 text-gray-400 transition-all duration-200 ease-in-out pointer-events-none">Veículo (Marca e Modelo)</label>
                             </div>
-                            <h3 class="font-semibold">4.9/5</h3>
-                            <p class="text-sm text-gray-600">Avaliação média</p>
-                        </div>
-                        <div class="bg-white p-4 rounded-lg shadow-md text-center">
-                            <div class="text-blue-500 text-3xl mb-2" aria-hidden="true">
-                                <i class="fas fa-user-tie"></i>
+                            <div class="relative">
+                                <input type="date" id="date" name="date" required class="floating-label-input w-full px-4 py-3 bg-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600">
+                                <label for="date" class="floating-label absolute left-4 top-4 text-gray-400 transition-all duration-200 ease-in-out pointer-events-none">Data</label>
                             </div>
-                            <h3 class="font-semibold">2</h3>
-                            <p class="text-sm text-gray-600">Profissionais</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="md:w-1/2">
-                    <div class="relative">
-                        <img src="https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80" alt="Equipe profissional da L' Brothers" class="rounded-lg shadow-xl w-full">
-                        <div class="absolute -bottom-6 -right-6 bg-blue-500 text-white p-6 rounded-lg shadow-lg">
-                            <h3 class="text-xl font-bold mb-2">5 anos</h3>
-                            <p class="text-sm">de excelência em estética automotiva</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Analytics Section -->
-    <section id="analytics" class="py-16 bg-white">
-        <div class="container mx-auto px-4">
-            <h2 class="text-3xl font-bold text-center mb-12">Análise de Dados</h2>
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div class="bg-gray-50 p-6 rounded-lg shadow-md">
-                    <h3 class="text-xl font-bold mb-4">Estatísticas Públicas</h3>
-                    <div class="space-y-4">
-                        <div class="flex justify-between">
-                            <span>Clientes Atendidos:</span>
-                            <span class="font-bold" id="public-clients">700+</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span>Avaliação Média:</span>
-                            <span class="font-bold text-yellow-500" id="public-rating">4.9/5</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span>Serviços Realizados:</span>
-                            <span class="font-bold" id="public-services">1500+</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="bg-gray-50 p-6 rounded-lg shadow-md">
-                    <h3 class="text-xl font-bold mb-4">Tendências</h3>
-                    <canvas id="publicTrendsChart" width="400" height="200"></canvas>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Contact Section -->
-    <section id="contact" class="py-16 bg-gray-100">
-        <div class="container mx-auto px-4">
-            <div class="flex flex-col md:flex-row">
-                <div class="md:w-1/2 mb-10 md:mb-0 md:pr-10">
-                    <h2 class="text-3xl font-bold mb-6">Entre em Contato</h2>
-                    <div class="space-y-4">
-                        <div class="flex items-start">
-                            <i class="fas fa-map-marker-alt text-blue-500 text-xl mr-4 mt-1"></i>
-                            <div>
-                                <h3 class="font-semibold">Endereço</h3>
-                                <p class="text-gray-700">R. Floriano Miranda, 68 - São Paulo/SP</p>
+                            <div class="relative">
+                                <input type="time" id="time" name="time" required class="floating-label-input w-full px-4 py-3 bg-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600">
+                                <label for="time" class="floating-label absolute left-4 top-4 text-gray-400 transition-all duration-200 ease-in-out pointer-events-none">Horário</label>
                             </div>
-                        </div>
-                        <div class="flex items-start">
-                            <i class="fas fa-phone-alt text-blue-500 text-xl mr-4 mt-1"></i>
-                            <div>
-                                <h3 class="font-semibold">Telefone</h3>
-                                <p class="text-gray-700">(11) 97723-8466</p>
+                            <div class="relative">
+                                <textarea id="notes" name="notes" placeholder=" " rows="3" class="floating-label-input w-full px-4 py-3 bg-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"></textarea>
+                                <label for="notes" class="floating-label absolute left-4 top-4 text-gray-400 transition-all duration-200 ease-in-out pointer-events-none">Observações (opcional)</label>
                             </div>
-                        </div>
-                        <div class="flex items-start">
-                            <i class="fas fa-envelope text-blue-500 text-xl mr-4 mt-1"></i>
-                            <div>
-                                <h3 class="font-semibold">Email</h3>
-                                <p class="text-gray-700">contato@lbrothers.com.br</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="md:w-1/2">
-                    <div class="bg-white p-8 rounded-lg shadow-md">
-                        <h3 class="text-xl font-semibold mb-6">Envie uma mensagem</h3>
-                        <div id="contact-messages"></div>
-                        <form id="contact-form">
-                            <div class="input-container">
-                                <input type="text" id="contact-name" name="name" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder=" " required>
-                                <label for="contact-name" class="floating-label">Seu Nome</label>
-                            </div>
-                            <div class="input-container">
-                                <input type="email" id="contact-email" name="email" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder=" " required>
-                                <label for="contact-email" class="floating-label">Seu Email</label>
-                            </div>
-                            <div class="input-container">
-                                <textarea id="contact-message" name="message" rows="4" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder=" " required></textarea>
-                                <label for="contact-message" class="floating-label">Sua Mensagem</label>
-                            </div>
-                            <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg transition">
-                                <span class="loading spinner mr-2"></span>
-                                Enviar Mensagem
-                            </button>
+                            <button type="submit" id="confirm-schedule-button" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300">Confirmar Agendamento</button>
+                            <button type="button" id="cancel-schedule-button" class="w-full mt-4 text-gray-400 hover:text-white">Cancelar</button>
                         </form>
                     </div>
                 </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Footer -->
-    <footer class="gradient-bg text-white py-12">
-        <div class="container mx-auto px-4">
-            <div class="text-center">
-                <div class="flex items-center justify-center space-x-2 mb-4">
-                    <i class="fas fa-car-side text-2xl text-blue-400"></i>
-                    <h3 class="text-xl font-bold">L' Brothers</h3>
-                </div>
-                <p class="text-gray-300 mb-4">Excelência em estética automotiva desde 2020.</p>
-                <div class="flex justify-center space-x-4">
-                    <a href="https://www.instagram.com/lavarapidolbrothers" class="bg-pink-500 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-pink-600 transition" target="_blank">
-                        <i class="fab fa-instagram"></i>
-                    </a>
-                </div>
-                <p class="text-gray-400 mt-4">© 2025 L' Brothers. Todos os direitos reservados.</p>
-            </div>
-        </div>
-    </footer>
-
-    <!-- Modals -->
-    <!-- Login Modal -->
-    <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
-            <div class="p-6">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-2xl font-bold">Área do Cliente</h3>
-                    <button onclick="closeModal('loginModal')" class="text-gray-500 hover:text-gray-700">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
                 
-                <div class="flex border-b mb-6">
-                    <button onclick="switchTab('loginTab')" class="tab-button px-4 py-2 font-medium border-b-2 border-blue-500 text-blue-500">Login</button>
-                    <button onclick="switchTab('registerTab')" class="tab-button px-4 py-2 font-medium text-gray-500">Cadastro</button>
-                </div>
-                
-                <div id="loginTab" class="tab-content active">
-                    <div id="login-messages"></div>
-                    <form id="login-form">
-                        <div class="input-container">
-                            <input type="email" id="login-email" name="email" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder=" " required>
-                            <label for="login-email" class="floating-label">Email</label>
-                        </div>
-                        <div class="input-container">
-                            <input type="password" id="login-password" name="password" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder=" " required>
-                            <label for="login-password" class="floating-label">Senha</label>
-                        </div>
-                        <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg transition mb-4">
-                            <span class="loading spinner mr-2"></span>
-                            Entrar
-                        </button>
-                    </form>
-                </div>
-                
-                <div id="registerTab" class="tab-content">
-                    <div id="register-messages"></div>
-                    <form id="register-form">
-                        <div class="input-container">
-                            <input type="text" id="register-name" name="name" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder=" " required>
-                            <label for="register-name" class="floating-label">Nome Completo</label>
-                        </div>
-                        <div class="input-container">
-                            <input type="email" id="register-email" name="email" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder=" " required>
-                            <label for="register-email" class="floating-label">Email</label>
-                        </div>
-                        <div class="input-container">
-                            <input type="tel" id="register-phone" name="phone" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder=" " required>
-                            <label for="register-phone" class="floating-label">Telefone</label>
-                        </div>
-                        <div class="input-container">
-                            <input type="password" id="register-password" name="password" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder=" " required>
-                            <label for="register-password" class="floating-label">Senha</label>
-                        </div>
-                        <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg transition">
-                            <span class="loading spinner mr-2"></span>
-                            Cadastrar
-                        </button>
-                    </form>
+                <div id="admin-tab" class="hidden space-y-6">
+                    <h3 class="text-xl font-bold mb-4">Painel do Administrador</h3>
+                    <p class="text-gray-400">Visão geral dos agendamentos e clientes.</p>
+                    <div class="bg-gray-700 p-4 rounded-md shadow-md">
+                        <h4 class="font-semibold mb-2">Total de Agendamentos por Serviço</h4>
+                        <canvas id="appointmentsChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Outros modais -->
-    <div id="adminLoginModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
-            <div class="p-6">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-2xl font-bold">Acesso Administrativo</h3>
-                    <button onclick="closeModal('adminLoginModal')" class="text-gray-500 hover:text-gray-700">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                
-                <div id="admin-login-messages"></div>
-                <form id="admin-login-form">
-                    <div class="input-container">
-                        <input type="text" id="admin-username" name="username" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder=" " required>
-                        <label for="admin-username" class="floating-label">Usuário</label>
-                    </div>
-                    <div class="input-container">
-                        <input type="password" id="admin-password" name="password" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder=" " required>
-                        <label for="admin-password" class="floating-label">Senha</label>
-                    </div>
-                    <button type="submit" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-medium py-3 px-6 rounded-lg transition">
-                        <span class="loading spinner mr-2"></span>
-                        Entrar como Admin
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Schedule Modal -->
-    <div id="scheduleModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-            <div class="p-6">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-2xl font-bold">Agendar Serviço</h3>
-                    <button onclick="closeModal('scheduleModal')" class="text-gray-500 hover:text-gray-700">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                
-                <div id="schedule-messages"></div>
-                <form id="schedule-form">
-                    <div class="input-container">
-                        <select id="service-select" name="service" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                            <option value="">Selecione um serviço</option>
-                            <option value="lavagem-premium">Lavagem Premium (R$ 120-250)</option>
-                            <option value="polimento-cristalizado">Polimento Cristalizado (R$ 350-600)</option>
-                            <option value="detalhamento-interno">Detalhamento Interno (R$ 250-400)</option>
-                            <option value="protecao-pintura">Proteção de Pintura (R$ 500-1200)</option>
-                            <option value="higienizacao-ar">Higienização AR (R$ 150-250)</option>
-                        </select>
-                    </div>
-                    
-                    <div class="input-container">
-                        <input type="text" id="vehicle-info" name="vehicle" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder=" " required>
-                        <label for="vehicle-info" class="floating-label">Veículo (Marca, Modelo, Ano)</label>
-                    </div>
-                    
-                    <div class="input-container">
-                        <input type="date" id="schedule-date" name="date" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                    </div>
-                    
-                    <div class="input-container">
-                        <select id="schedule-time" name="time" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                            <option value="">Selecione horário</option>
-                            <option value="08:00">08:00</option>
-                            <option value="09:00">09:00</option>
-                            <option value="10:00">10:00</option>
-                            <option value="11:00">11:00</option>
-                            <option value="13:00">13:00</option>
-                            <option value="14:00">14:00</option>
-                            <option value="15:00">15:00</option>
-                            <option value="16:00">16:00</option>
-                        </select>
-                    </div>
-                    
-                    <div class="input-container">
-                        <textarea id="schedule-notes" name="notes" rows="3" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder=" "></textarea>
-                        <label for="schedule-notes" class="floating-label">Observações (opcional)</label>
-                    </div>
-                    
-                    <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg transition">
-                        <span class="loading spinner mr-2"></span>
-                        Confirmar Agendamento
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Success Modal -->
-    <div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-8 text-center">
-            <i class="fas fa-check-circle text-green-500 text-6xl mb-4"></i>
-            <h3 class="text-2xl font-bold mb-2">Sucesso!</h3>
-            <p id="success-message" class="text-gray-600 mb-6">Operação realizada com sucesso!</p>
-            <button onclick="closeModal('successModal')" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-6 rounded-lg">OK</button>
-        </div>
-    </div>
-
+    
     <script>
-        // ========================================
-        // CONFIGURAÇÕES CORRIGIDAS PARA CORS
-        // ========================================
-        
-        // EmailJS Configuration
-        const EMAILJS_CONFIG = {
-            serviceID: 'service_gearthp',
-            templateID: 'template_90i3c9g',
-            publicKey: 'DSo5lZAqsTT5-m6xZ'
-        };
-
-        // Supabase Configuration com CORS corrigido
-        const SUPABASE_URL = 'https://ulyxmbzdwntddcesjsnw.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVseXhtYnpkd250ZGRjZXNqc253Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc4ODIyMzEsImV4cCI6MjA3MzQ1ODIzMX0.Q3OmlDne3ZoU1QJHOzr_MD6ho4FaRynGJoaz_9pZ3UM';
-        
-        let supabase = null;
-        let isSupabaseEnabled = false;
-        
-        // Inicialização melhorada do Supabase
-        try {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-                auth: {
-                    persistSession: true,
-                    detectSessionInUrl: false
-                }
-            });
-            console.log('Supabase inicializado');
-            testSupabaseConnection();
-        } catch (error) {
-            console.error('Erro ao inicializar Supabase:', error);
-            showConnectionStatus('Usando armazenamento local - Supabase indisponível', 'warning');
-        }
-
-        // Inicialização do EmailJS
-        (function() {
-            try {
-                emailjs.init(EMAILJS_CONFIG.publicKey);
-                console.log('EmailJS inicializado com sucesso');
-            } catch (error) {
-                console.error('Erro ao inicializar EmailJS:', error);
-            }
-        })();
-
-        // ========================================
-        // FUNÇÕES DE CONEXÃO E STATUS
-        // ========================================
-        
-        function showConnectionStatus(message, type = 'info') {
-            const statusDiv = document.getElementById('connection-status');
-            const messageSpan = document.getElementById('connection-message');
-            
-            if (statusDiv && messageSpan) {
-                messageSpan.textContent = message;
-                statusDiv.className = `bg-${type === 'warning' ? 'yellow' : type === 'error' ? 'red' : 'blue'}-100 border-l-4 border-${type === 'warning' ? 'yellow' : type === 'error' ? 'red' : 'blue'}-500 p-4`;
-                statusDiv.classList.remove('hidden');
-                
-                if (type === 'success') {
-                    setTimeout(() => statusDiv.classList.add('hidden'), 3000);
-                }
-            }
-        }
-
-        async function testSupabaseConnection() {
-            try {
-                // Teste simples de conexão
-                const { data, error, count } = await supabase
-                    .from('users')
-                    .select('*', { count: 'exact', head: true });
-                
-                if (error && error.code !== 'PGRST116') { // PGRST116 é "tabela não encontrada" - ainda assim indica conexão
-                    throw error;
-                }
-                
-                isSupabaseEnabled = true;
-                console.log('✅ Conexão Supabase OK');
-                showConnectionStatus('Conectado ao banco de dados', 'success');
-                return true;
-            } catch (error) {
-                console.error('❌ Falha na conexão Supabase:', error);
-                isSupabaseEnabled = false;
-                showConnectionStatus('Usando modo offline - alguns recursos podem estar limitados', 'warning');
-                return false;
-            }
-        }
-
-        // ========================================
-        // DATABASE MANAGER APRIMORADO
-        // ========================================
-        
-        class DatabaseManager {
-            constructor() {
-                this.retryAttempts = 3;
-                this.retryDelay = 1000;
-            }
-
-            async store(table, data) {
-                console.log(`Salvando em ${table}:`, data);
-                
-                if (isSupabaseEnabled) {
-                    return await this.storeSupabase(table, data);
-                } else {
-                    return this.storeLocal(table, data);
-                }
-            }
-
-            async storeSupabase(table, data) {
-                for (let attempt = 1; attempt <= this.retryAttempts; attempt++) {
-                    try {
-                        const dataWithTimestamp = {
-                            ...data,
-                            created_at: new Date().toISOString()
-                        };
-
-                        const { data: result, error } = await supabase
-                            .from(table)
-                            .insert([dataWithTimestamp])
-                            .select()
-                            .single();
-                        
-                        if (error) {
-                            console.error(`Erro Supabase tentativa ${attempt}:`, error);
-                            if (attempt === this.retryAttempts) {
-                                throw error;
-                            }
-                            await this.delay(this.retryDelay * attempt);
-                            continue;
-                        }
-                        
-                        console.log(`✅ Salvo no Supabase ${table}:`, result);
-                        return { success: true, data: result };
-                        
-                    } catch (error) {
-                        if (attempt === this.retryAttempts) {
-                            console.error(`❌ Falha final em ${table} após ${this.retryAttempts} tentativas:`, error);
-                            console.log('🔄 Fallback para armazenamento local');
-                            return this.storeLocal(table, data);
-                        }
-                    }
-                }
-            }
-
-            async fetch(table, filters = {}) {
-                if (isSupabaseEnabled) {
-                    return await this.fetchSupabase(table, filters);
-                } else {
-                    return this.fetchLocal(table, filters);
-                }
-            }
-
-            async fetchSupabase(table, filters = {}) {
-                try {
-                    let query = supabase.from(table).select('*');
-                    
-                    Object.entries(filters).forEach(([key, value]) => {
-                        query = query.eq(key, value);
-                    });
-                    
-                    const { data, error } = await query.order('created_at', { ascending: false });
-                    
-                    if (error) {
-                        console.error(`Erro ao buscar ${table}:`, error);
-                        return this.fetchLocal(table, filters);
-                    }
-                    
-                    console.log(`✅ Dados do Supabase ${table}:`, data?.length || 0, 'registros');
-                    return { success: true, data: data || [] };
-                    
-                } catch (error) {
-                    console.error(`❌ Erro ao buscar ${table}:`, error);
-                    return this.fetchLocal(table, filters);
-                }
-            }
-
-            async update(table, id, updates) {
-                if (isSupabaseEnabled) {
-                    return await this.updateSupabase(table, id, updates);
-                } else {
-                    return this.updateLocal(table, id, updates);
-                }
-            }
-
-            async updateSupabase(table, id, updates) {
-                try {
-                    const { data, error } = await supabase
-                        .from(table)
-                        .update({ ...updates, updated_at: new Date().toISOString() })
-                        .eq('id', id)
-                        .select()
-                        .single();
-                    
-                    if (error) {
-                        console.error(`Erro ao atualizar ${table}:`, error);
-                        return this.updateLocal(table, id, updates);
-                    }
-                    
-                    console.log(`✅ Atualizado no Supabase ${table}:`, data);
-                    return { success: true, data };
-                    
-                } catch (error) {
-                    console.error(`❌ Erro ao atualizar ${table}:`, error);
-                    return this.updateLocal(table, id, updates);
-                }
-            }
-
-            // Métodos locais (fallback)
-            storeLocal(table, data) {
-                const items = JSON.parse(localStorage.getItem(`lbrothers_${table}`) || '[]');
-                const newItem = { 
-                    ...data, 
-                    id: this.generateId(), 
-                    created_at: new Date().toISOString() 
-                };
-                items.push(newItem);
-                localStorage.setItem(`lbrothers_${table}`, JSON.stringify(items));
-                console.log(`💾 Salvo localmente em ${table}:`, newItem);
-                return { success: true, data: newItem };
-            }
-
-            fetchLocal(table, filters = {}) {
-                const items = JSON.parse(localStorage.getItem(`lbrothers_${table}`) || '[]');
-                let filtered = items;
-                
-                Object.entries(filters).forEach(([key, value]) => {
-                    filtered = filtered.filter(item => item[key] === value);
-                });
-                
-                console.log(`💾 Dados locais de ${table}:`, filtered.length, 'registros');
-                return { success: true, data: filtered };
-            }
-
-            updateLocal(table, id, updates) {
-                const items = JSON.parse(localStorage.getItem(`lbrothers_${table}`) || '[]');
-                const index = items.findIndex(item => item.id === id);
-                
-                if (index !== -1) {
-                    items[index] = { ...items[index], ...updates, updated_at: new Date().toISOString() };
-                    localStorage.setItem(`lbrothers_${table}`, JSON.stringify(items));
-                    console.log(`💾 Atualizado localmente em ${table}:`, items[index]);
-                    return { success: true, data: items[index] };
-                }
-                
-                return { success: false, error: 'Item não encontrado' };
-            }
-
-            generateId() {
-                return 'local_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
-            }
-
-            delay(ms) {
-                return new Promise(resolve => setTimeout(resolve, ms));
-            }
-        }
-
-        const db = new DatabaseManager();
-
-        // ========================================
-        // EMAIL FUNCTIONS
-        // ========================================
-        
-        async function sendConfirmationEmail(appointmentData, userEmail) {
-            console.log('📧 Enviando email para:', userEmail);
-            
-            try {
-                // Modificar template params para corresponder ao template do EmailJS
-                const templateParams = {
-                    user_name: appointmentData.user_name || 'Cliente',
-                    service_name: getServiceName(appointmentData.service),
-                    vehicle: appointmentData.vehicle,
-                    appointment_date: formatDate(appointmentData.date),
-                    appointment_time: appointmentData.time,
-                    notes: appointmentData.notes || 'Nenhuma observação'
-                };
-
-                console.log('📧 Enviando com parâmetros:', templateParams);
-
-                const result = await emailjs.send(
-                    EMAILJS_CONFIG.serviceID,
-                    EMAILJS_CONFIG.templateID,
-                    templateParams
-                );
-
-                console.log('✅ Email enviado:', result);
-                return { success: true, result };
-                
-            } catch (error) {
-                console.error('❌ Erro no email:', error);
-                return { success: false, error: error.text || error.message || 'Erro desconhecido' };
-            }
-        }
-
-        // ========================================
-        // APPLICATION STATE
-        // ========================================
-        
-        let appState = {
-            currentUser: JSON.parse(localStorage.getItem('lbrothers_current_user') || 'null'),
-            isAdmin: JSON.parse(localStorage.getItem('lbrothers_is_admin') || 'false'),
-            appointments: [],
-            analytics: {
-                totalAppointments: 0,
-                todayAppointments: 0,
-                totalUsers: 0,
-                totalContacts: 0
-            }
-        };
-
-        // ========================================
-        // UTILITY FUNCTIONS
-        // ========================================
-        
-        function formatDate(dateString) {
-            const date = new Date(dateString);
-            return date.toLocaleDateString('pt-BR');
-        }
-
-        function getServiceName(serviceKey) {
-            const services = {
-                'lavagem-premium': 'Lavagem Premium',
-                'polimento-cristalizado': 'Polimento Cristalizado',
-                'detalhamento-interno': 'Detalhamento Interno',
-                'protecao-pintura': 'Proteção de Pintura',
-                'higienizacao-ar': 'Higienização AR'
+        document.addEventListener('DOMContentLoaded', () => {
+            const SUPABASE_URL = 'https://ulyxmbzdwntddcesjsnw.supabase.co';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVseXhtYnpkd250ZGRjZXNqc253Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTY4MzQxNDUsImV4cCI6MTczMjYxMDE0NX0.Vw9iS0e4k_i2jU2p18n8kQd5x9l64z9G3cM7hV7B8lA';
+            const EMAILJS_CONFIG = {
+                serviceID: 'lbrothers_contato',
+                templateID_contact: 'template_r1s42z8',
+                templateID_appointment: 'template_0950qf5',
+                publicKey: 'f3v32TjK8i_fEw3x-'
             };
-            return services[serviceKey] || serviceKey;
-        }
 
-        function showMessage(containerId, message, type = 'success') {
-            const container = document.getElementById(containerId);
-            if (!container) return;
-            
-            const cssClass = type === 'success' ? 'success-message' : 'error-message';
-            container.innerHTML = `<div class="${cssClass}">${message}</div>`;
-            setTimeout(() => container.innerHTML = '', 5000);
-        }
+            const lbrothersSystem = (function() {
+                let supabaseClient = null;
+                let isSupabaseEnabled = false;
 
-        function showLoading(buttonElement, show = true) {
-            const spinner = buttonElement.querySelector('.loading');
-            if (spinner) {
-                spinner.classList.toggle('active', show);
-            }
-            buttonElement.disabled = show;
-        }
-
-        // ========================================
-        // USER MANAGEMENT
-        // ========================================
-        
-        async function registerUser(userData) {
-            console.log('👤 Registrando usuário:', userData.email);
-            
-            try {
-                // Verificar se o email já existe
-                const existingUsers = await db.fetch('users', { email: userData.email });
-                
-                if (existingUsers.data.length > 0) {
-                    console.log('❌ Email já cadastrado');
-                    return { success: false, message: 'Email já cadastrado!' };
+                try {
+                    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    isSupabaseEnabled = true;
+                    console.log('✅ Conexão Supabase OK.');
+                } catch (error) {
+                    isSupabaseEnabled = false;
+                    console.error('❌ Falha na conexão Supabase:', error);
                 }
 
-                const hashedPassword = btoa(userData.password);
-                
-                const newUser = {
-                    name: userData.name,
-                    email: userData.email,
-                    phone: userData.phone,
-                    password: hashedPassword,
-                    role: 'user'
+                if (EMAILJS_CONFIG.serviceID && EMAILJS_CONFIG.publicKey) {
+                    emailjs.init(EMAILJS_CONFIG.publicKey);
+                    console.log('✅ EmailJS inicializado com sucesso.');
+                } else {
+                    console.error('❌ EmailJS não está configurado.');
+                }
+
+                // Estado da aplicação
+                let appState = {
+                    user: null,
+                    isLoggedIn: false,
+                    isAdmin: false,
+                    appointments: []
                 };
 
-                const result = await db.store('users', newUser);
-                
-                if (result.success) {
-                    console.log('✅ Usuário registrado com sucesso');
-                    return { success: true, message: 'Cadastro realizado com sucesso!' };
-                }
-                
-                return { success: false, message: 'Erro ao criar conta. Tente novamente.' };
-                
-            } catch (error) {
-                console.error('❌ Erro no registro:', error);
-                return { success: false, message: 'Erro interno. Tente novamente.' };
-            }
-        }
+                // Manipulação do banco de dados (Supabase ou LocalStorage)
+                const db = {
+                    store: async function(table, data) {
+                        if (isSupabaseEnabled) {
+                            const { data: result, error } = await supabaseClient
+                                .from(table)
+                                .insert([data])
+                                .select();
+                            if (error) {
+                                console.error(`❌ Erro ao salvar em ${table}:`, error.message);
+                                return { success: false, error: error.message };
+                            }
+                            console.log(`✅ Salvo no Supabase ${table}:`, result);
+                            return { success: true, data: result[0] };
+                        } else {
+                            // LocalStorage fallback
+                            let items = JSON.parse(localStorage.getItem(`lbrothers_${table}`)) || [];
+                            const newItem = { id: Date.now(), ...data };
+                            items.push(newItem);
+                            localStorage.setItem(`lbrothers_${table}`, JSON.stringify(items));
+                            console.log(`⚠️ Salvo localmente em ${table}:`, newItem);
+                            return { success: true, data: newItem };
+                        }
+                    },
 
-        async function loginUser(email, password) {
-            console.log('🔐 Tentando login para:', email);
-            
-            try {
-                const hashedPassword = btoa(password);
-                const users = await db.fetch('users');
-                
-                const user = users.data.find(u => u.email === email && u.password === hashedPassword);
-                
-                if (user) {
-                    appState.currentUser = {
-                        id: user.id,
-                        name: user.name,
-                        email: user.email,
-                        phone: user.phone,
-                        role: user.role
-                    };
-                    
-                    localStorage.setItem('lbrothers_current_user', JSON.stringify(appState.currentUser));
-                    console.log('✅ Login realizado com sucesso');
-                    return { success: true, user: appState.currentUser };
-                }
-                
-                console.log('❌ Credenciais inválidas');
-                return { success: false, message: 'Email ou senha incorretos!' };
-                
-            } catch (error) {
-                console.error('❌ Erro no login:', error);
-                return { success: false, message: 'Erro interno. Tente novamente.' };
-            }
-        }
-
-        function logout() {
-            appState.currentUser = null;
-            appState.isAdmin = false;
-            localStorage.removeItem('lbrothers_current_user');
-            localStorage.removeItem('lbrothers_is_admin');
-            updateUserInterface();
-            
-            const userDashboard = document.getElementById('userDashboard');
-            if (userDashboard) userDashboard.classList.add('hidden');
-            const adminPanel = document.getElementById('adminPanel');
-            if (adminPanel) adminPanel.classList.remove('active');
-            
-            console.log('👋 Logout realizado');
-        }
-
-        function isLoggedIn() {
-            return appState.currentUser !== null;
-        }
-
-        // ========================================
-        // APPOINTMENT MANAGEMENT
-        // ========================================
-        
-        async function createAppointment(appointmentData) {
-            if (!isLoggedIn()) {
-                return { success: false, message: 'Você precisa estar logado para agendar!' };
-            }
-
-            console.log('📅 Criando agendamento:', appointmentData);
-
-            try {
-                const appointment = {
-                    user_id: appState.currentUser.id,
-                    user_name: appState.currentUser.name,
-                    user_email: appState.currentUser.email,
-                    user_phone: appState.currentUser.phone,
-                    service: appointmentData.service,
-                    vehicle: appointmentData.vehicle,
-                    date: appointmentData.date,
-                    time: appointmentData.time,
-                    notes: appointmentData.notes || '',
-                    status: 'agendado'
-                };
-
-                const result = await db.store('appointments', appointment);
-                
-                if (result.success) {
-                    console.log('✅ Agendamento salvo, enviando email...');
-                    
-                    // Tentar enviar email
-                    const emailResult = await sendConfirmationEmail(
-                        result.data, 
-                        appState.currentUser.email
-                    );
-                    
-                    let successMessage = 'Agendamento confirmado com sucesso!';
-                    if (emailResult.success) {
-                        successMessage = 'Agendamento confirmado! Email de confirmação enviado.';
-                        console.log('✅ Email de confirmação enviado');
-                    } else {
-                        console.warn('⚠️ Agendamento salvo, mas email falhou:', emailResult.error);
-                        successMessage = 'Agendamento confirmado! (Email de confirmação indisponível)';
+                    fetch: async function(table, filters = {}) {
+                        if (isSupabaseEnabled) {
+                            let query = supabaseClient.from(table).select('*');
+                            if (filters.email) {
+                                query = query.eq('email', filters.email);
+                            }
+                            if (filters.userId) {
+                                query = query.eq('user_id', filters.userId);
+                            }
+                            const { data, error } = await query;
+                            if (error) {
+                                console.error(`❌ Erro ao buscar em ${table}:`, error.message);
+                                return { success: false, error: error.message };
+                            }
+                            console.log(`✅ Buscado do Supabase ${table}:`, data);
+                            return { success: true, data: data };
+                        } else {
+                            // LocalStorage fallback
+                            const items = JSON.parse(localStorage.getItem(`lbrothers_${table}`)) || [];
+                            console.log(`⚠️ Buscado localmente de ${table}:`, items);
+                            return { success: true, data: items };
+                        }
                     }
-                    
-                    await loadUserAppointments();
-                    return { 
-                        success: true, 
-                        message: successMessage,
-                        appointment: result.data 
-                    };
-                }
-                
-                return { success: false, message: 'Erro ao criar agendamento. Tente novamente.' };
-                
-            } catch (error) {
-                console.error('❌ Erro ao criar agendamento:', error);
-                return { success: false, message: 'Erro interno. Tente novamente.' };
-            }
-        }
-
-        async function loadUserAppointments() {
-            if (!isLoggedIn()) return;
-            
-            try {
-                const result = await db.fetch('appointments', { user_id: appState.currentUser.id });
-                appState.appointments = result.data || [];
-                displayUserAppointments();
-                console.log('📅 Agendamentos carregados:', appState.appointments.length);
-            } catch (error) {
-                console.error('❌ Erro ao carregar agendamentos:', error);
-            }
-        }
-
-        function displayUserAppointments() {
-            const container = document.getElementById('user-appointments');
-            if (!container) return;
-
-            if (appState.appointments.length === 0) {
-                container.innerHTML = '<p class="text-gray-500">Nenhum agendamento encontrado.</p>';
-                return;
-            }
-
-            container.innerHTML = appState.appointments.map(apt => `
-                <div class="bg-white rounded-lg shadow-md p-6">
-                    <h3 class="font-semibold text-lg mb-2">${getServiceName(apt.service)}</h3>
-                    <p class="text-gray-600 mb-2">Veículo: ${apt.vehicle}</p>
-                    <p class="text-gray-600 mb-2">Data: ${formatDate(apt.date)}</p>
-                    <p class="text-gray-600 mb-2">Horário: ${apt.time}</p>
-                    <span class="status-badge status-${apt.status}">${apt.status}</span>
-                    ${apt.notes ? `<p class="text-gray-500 text-sm mt-2">${apt.notes}</p>` : ''}
-                </div>
-            `).join('');
-        }
-
-        async function saveContact(contactData) {
-            console.log('📨 Salvando contato:', contactData.email);
-            
-            try {
-                const contact = {
-                    name: contactData.name,
-                    email: contactData.email,
-                    phone: contactData.phone || '',
-                    message: contactData.message
                 };
 
-                const result = await db.store('contacts', contact);
+                // Funções de envio de e-mail
+                const mail = {
+                    sendContact: async function(formData) {
+                        if (EMAILJS_CONFIG.publicKey) {
+                            try {
+                                const response = await emailjs.sendForm(
+                                    EMAILJS_CONFIG.serviceID,
+                                    EMAILJS_CONFIG.templateID_contact,
+                                    formData
+                                );
+                                console.log('✅ Email de contato enviado:', response);
+                                return { success: true };
+                            } catch (error) {
+                                console.error('❌ Erro ao enviar email de contato:', error);
+                                return { success: false, error: error };
+                            }
+                        } else {
+                            console.warn('⚠️ EmailJS não configurado. Email de contato não será enviado.');
+                            return { success: false, error: 'EmailJS não configurado' };
+                        }
+                    },
+                    sendAppointment: async function(formData) {
+                        if (EMAILJS_CONFIG.publicKey) {
+                            try {
+                                const response = await emailjs.sendForm(
+                                    EMAILJS_CONFIG.serviceID,
+                                    EMAILJS_CONFIG.templateID_appointment,
+                                    formData
+                                );
+                                console.log('✅ Email de agendamento enviado:', response);
+                                return { success: true };
+                            } catch (error) {
+                                console.error('❌ Erro ao enviar email de agendamento:', error);
+                                return { success: false, error: error };
+                            }
+                        } else {
+                            console.warn('⚠️ EmailJS não configurado. Email de agendamento não será enviado.');
+                            return { success: false, error: 'EmailJS não configurado' };
+                        }
+                    }
+                };
+
+                // Lógica da UI
+                const ui = {
+                    showModal: function() { document.getElementById('modal').classList.remove('hidden'); },
+                    hideModal: function() { document.getElementById('modal').classList.add('hidden'); },
+                    showTab: function(tabId) {
+                        document.querySelectorAll('#modal-content > div:not(.flex)').forEach(el => el.classList.add('hidden'));
+                        document.getElementById(tabId).classList.remove('hidden');
+                        document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('border-blue-500', 'text-blue-500'));
+                        document.querySelectorAll('.tab-button').forEach(el => el.classList.add('border-transparent', 'text-gray-400'));
+                        document.getElementById(`tab-${tabId.replace('-tab', '')}`).classList.remove('border-transparent', 'text-gray-400');
+                        document.getElementById(`tab-${tabId.replace('-tab', '')}`).classList.add('border-blue-500', 'text-blue-500');
+                    },
+                    showMessage: function(elementId, message, type = 'success') {
+                        const el = document.getElementById(elementId);
+                        el.textContent = message;
+                        el.classList.remove('hidden', 'text-green-400', 'text-red-400');
+                        el.classList.add(type === 'success' ? 'text-green-400' : 'text-red-400');
+                        setTimeout(() => el.classList.add('hidden'), 5000);
+                    },
+                    updateAppointmentsList: function(appointments) {
+                        const listContainer = document.getElementById('appointments-list');
+                        const noAppointments = document.getElementById('no-appointments-message');
+                        listContainer.innerHTML = '';
+                        if (appointments.length > 0) {
+                            noAppointments.classList.add('hidden');
+                            appointments.forEach(app => {
+                                const appElement = document.createElement('div');
+                                appElement.className = 'bg-gray-700 p-4 rounded-md shadow-md';
+                                appElement.innerHTML = `
+                                    <p class="font-semibold text-lg">${app.service}</p>
+                                    <p class="text-gray-400">Veículo: ${app.vehicle}</p>
+                                    <p class="text-gray-400">Data: ${app.date}</p>
+                                    <p class="text-gray-400">Hora: ${app.time}</p>
+                                `;
+                                listContainer.appendChild(appElement);
+                            });
+                        } else {
+                            noAppointments.classList.remove('hidden');
+                        }
+                    },
+                    initAdminChart: function(appointments) {
+                        const ctx = document.getElementById('appointmentsChart').getContext('2d');
+                        const serviceCounts = {};
+                        appointments.forEach(app => {
+                            serviceCounts[app.service] = (serviceCounts[app.service] || 0) + 1;
+                        });
+                        const labels = Object.keys(serviceCounts);
+                        const data = Object.values(serviceCounts);
+                        new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: labels,
+                                datasets: [{
+                                    label: 'Total de Agendamentos',
+                                    data: data,
+                                    backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                                    borderColor: 'rgba(59, 130, 246, 1)',
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                scales: {
+                                    y: {
+                                        beginAtZero: true
+                                    }
+                                }
+                            }
+                        });
+                    }
+                };
+
+                // Event Listeners
+                document.getElementById('nav-toggle').addEventListener('click', () => {
+                    const navContent = document.getElementById('nav-content');
+                    navContent.classList.toggle('hidden');
+                });
+
+                document.getElementById('cta-button').addEventListener('click', () => {
+                    if (appState.isLoggedIn) {
+                        if (appState.isAdmin) {
+                            ui.showTab('admin-tab');
+                        } else {
+                            ui.showTab('appointments-tab');
+                            ui.updateAppointmentsList(appState.appointments);
+                        }
+                    } else {
+                        ui.showTab('login-tab');
+                    }
+                    ui.showModal();
+                });
+
+                document.getElementById('modal-close').addEventListener('click', ui.hideModal);
+                document.getElementById('tab-login').addEventListener('click', () => ui.showTab('login-tab'));
+                document.getElementById('tab-register').addEventListener('click', () => ui.showTab('register-tab'));
+                document.getElementById('tab-appointments').addEventListener('click', () => ui.showTab('appointments-tab'));
+                document.getElementById('tab-admin').addEventListener('click', () => ui.showTab('admin-tab'));
                 
-                if (result.success) {
-                    console.log('✅ Contato salvo');
-                    return { success: true, message: 'Mensagem enviada com sucesso!' };
-                }
+                document.getElementById('schedule-new-button').addEventListener('click', () => {
+                    document.getElementById('appointments-list-container').classList.add('hidden');
+                    document.getElementById('schedule-form-container').classList.remove('hidden');
+                });
+
+                document.getElementById('cancel-schedule-button').addEventListener('click', () => {
+                    document.getElementById('appointments-list-container').classList.remove('hidden');
+                    document.getElementById('schedule-form-container').classList.add('hidden');
+                });
                 
-                return { success: false, message: 'Erro ao enviar mensagem.' };
-                
-            } catch (error) {
-                console.error('❌ Erro ao salvar contato:', error);
-                return { success: false, message: 'Erro interno.' };
-            }
-        }
-
-        // ========================================
-        // UI FUNCTIONS
-        // ========================================
-        
-        function updateUserInterface() {
-            const loggedOutMenu = document.getElementById('user-menu-logged-out');
-            const loggedInMenu = document.getElementById('user-menu-logged-in');
-            const userName = document.getElementById('user-name');
-
-            if (isLoggedIn()) {
-                if (loggedOutMenu) loggedOutMenu.style.display = 'none';
-                if (loggedInMenu) loggedInMenu.classList.remove('hidden');
-                if (userName) userName.textContent = appState.currentUser.name;
-                loadUserAppointments();
-            } else {
-                if (loggedOutMenu) loggedOutMenu.style.display = 'flex';
-                if (loggedInMenu) loggedInMenu.classList.add('hidden');
-            }
-        }
-
-        function openModal(modalId) {
-            const modal = document.getElementById(modalId);
-            if (modal) {
-                modal.classList.remove('hidden');
-                document.body.style.overflow = 'hidden';
-            }
-        }
-
-        function closeModal(modalId) {
-            const modal = document.getElementById(modalId);
-            if (modal) {
-                modal.classList.add('hidden');
-                document.body.style.overflow = 'auto';
-            }
-        }
-
-        function switchTab(activeTabId) {
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            document.querySelectorAll('.tab-button').forEach(btn => {
-                btn.classList.remove('border-blue-500', 'text-blue-500');
-                btn.classList.add('text-gray-500');
-            });
-            
-            const activeTab = document.getElementById(activeTabId);
-            if (activeTab) {
-                activeTab.classList.add('active');
-                const tabButton = document.querySelector(`[onclick="switchTab('${activeTabId}')"]`);
-                if (tabButton) {
-                    tabButton.classList.add('border-blue-500', 'text-blue-500');
-                    tabButton.classList.remove('text-gray-500');
-                }
-            }
-        }
-
-        function toggleUserDashboard() {
-            const dashboard = document.getElementById('userDashboard');
-            if (dashboard) {
-                dashboard.classList.toggle('hidden');
-                if (!dashboard.classList.contains('hidden')) {
-                    loadUserAppointments();
-                }
-            }
-        }
-
-        function toggleAdminPanel() {
-            const panel = document.getElementById('adminPanel');
-            if (panel) {
-                panel.classList.toggle('active');
-            }
-        }
-
-        function scheduleService(serviceType) {
-            if (!isLoggedIn()) {
-                openModal('loginModal');
-                return;
-            }
-            
-            openModal('scheduleModal');
-            const serviceSelect = document.getElementById('service-select');
-            if (serviceSelect) {
-                serviceSelect.value = serviceType;
-            }
-        }
-
-        function checkAdminAccess(username, password) {
-            if (username === 'ADMIN' && password === 'ADMIN') {
-                appState.isAdmin = true;
-                localStorage.setItem('lbrothers_is_admin', 'true');
-                return true;
-            }
-            return false;
-        }
-
-        // ========================================
-        // EVENT LISTENERS
-        // ========================================
-        
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Inicializando L\' Brothers...');
-            updateUserInterface();
-            
-            // Login form
-            const loginForm = document.getElementById('login-form');
-            if (loginForm) {
-                loginForm.addEventListener('submit', async function(e) {
+                // Forms
+                document.getElementById('login-form').addEventListener('submit', async (e) => {
                     e.preventDefault();
-                    const button = e.target.querySelector('button[type="submit"]');
-                    showLoading(button);
-                    
-                    const formData = new FormData(e.target);
-                    const result = await loginUser(formData.get('email'), formData.get('password'));
-                    
-                    showLoading(button, false);
-                    
-                    if (result.success) {
-                        showMessage('login-messages', 'Login realizado com sucesso!');
+                    const email = document.getElementById('login_email').value;
+                    const password = document.getElementById('login_password').value;
+
+                    const { data, success } = await db.fetch('users', { email: email });
+                    if (success && data.length > 0) {
+                        const user = data[0];
+                        if (user.password === btoa(password)) { // Senha codificada em base64
+                            appState.user = user;
+                            appState.isLoggedIn = true;
+                            appState.isAdmin = (user.role === 'admin');
+                            
+                            document.getElementById('cta-button').textContent = 'Área do Cliente'; // Restaura o botão
+
+                            if(appState.isAdmin) {
+                                document.getElementById('tab-appointments').classList.add('hidden');
+                                document.getElementById('tab-admin').classList.remove('hidden');
+                                ui.showTab('admin-tab');
+                                const { data: allAppointments } = await db.fetch('appointments');
+                                ui.initAdminChart(allAppointments);
+                                console.log('✅ Login de administrador bem-sucedido!');
+                            } else {
+                                document.getElementById('tab-admin').classList.add('hidden');
+                                document.getElementById('tab-appointments').classList.remove('hidden');
+                                ui.showTab('appointments-tab');
+                                const { data: appointments } = await db.fetch('appointments', { userId: user.id });
+                                appState.appointments = appointments;
+                                ui.updateAppointmentsList(appState.appointments);
+                                console.log('✅ Login de usuário bem-sucedido!');
+                            }
+                            
+                            ui.hideModal();
+                            ui.showMessage('login-message', 'Login bem-sucedido!', 'success');
+                            
+                        } else {
+                            ui.showMessage('login-message', 'Senha incorreta.', 'error');
+                        }
+                    } else {
+                        ui.showMessage('login-message', 'Usuário não encontrado.', 'error');
+                    }
+                });
+
+                document.getElementById('register-form').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const name = document.getElementById('register_name').value;
+                    const email = document.getElementById('register_email').value;
+                    const phone = document.getElementById('register_phone').value;
+                    const password = document.getElementById('register_password').value;
+
+                    const { data: existingUser } = await db.fetch('users', { email: email });
+                    if (existingUser && existingUser.length > 0) {
+                        ui.showMessage('register-message', 'E-mail já cadastrado.', 'error');
+                        return;
+                    }
+
+                    const newUser = {
+                        name: name,
+                        email: email,
+                        phone: phone,
+                        password: btoa(password), // Criptografia básica para demonstração
+                        role: 'user'
+                    };
+
+                    const { success } = await db.store('users', newUser);
+                    if (success) {
+                        ui.showMessage('register-message', 'Cadastro realizado com sucesso!', 'success');
                         setTimeout(() => {
-                            closeModal('loginModal');
-                            updateUserInterface();
-                        }, 1500);
+                            document.getElementById('register-form').reset();
+                            ui.showTab('login-tab');
+                        }, 2000);
                     } else {
-                        showMessage('login-messages', result.message, 'error');
+                        ui.showMessage('register-message', 'Erro ao cadastrar. Tente novamente.', 'error');
                     }
                 });
-            }
 
-            // Register form
-            const registerForm = document.getElementById('register-form');
-            if (registerForm) {
-                registerForm.addEventListener('submit', async function(e) {
+                document.getElementById('schedule-form').addEventListener('submit', async (e) => {
                     e.preventDefault();
-                    const button = e.target.querySelector('button[type="submit"]');
-                    showLoading(button);
+                    const form = e.target;
                     
-                    const formData = new FormData(e.target);
-                    const userData = {
-                        name: formData.get('name'),
-                        email: formData.get('email'),
-                        phone: formData.get('phone'),
-                        password: formData.get('password')
+                    const newAppointment = {
+                        user_id: appState.user.id,
+                        user_name: appState.user.name,
+                        user_email: appState.user.email,
+                        user_phone: appState.user.phone,
+                        service: form.elements['service'].value,
+                        vehicle: form.elements['vehicle'].value,
+                        date: form.elements['date'].value,
+                        time: form.elements['time'].value,
+                        notes: form.elements['notes'].value,
+                        status: 'Pendente'
                     };
-                    
-                    const result = await registerUser(userData);
-                    
-                    showLoading(button, false);
-                    
-                    if (result.success) {
-                        showMessage('register-messages', result.message);
-                        setTimeout(() => switchTab('loginTab'), 1500);
-                    } else {
-                        showMessage('register-messages', result.message, 'error');
-                    }
-                });
-            }
 
-            // Admin login form
-            const adminLoginForm = document.getElementById('admin-login-form');
-            if (adminLoginForm) {
-                adminLoginForm.addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    const formData = new FormData(e.target);
-                    const username = formData.get('username');
-                    const password = formData.get('password');
-                    
-                    if (checkAdminAccess(username, password)) {
-                        showMessage('admin-login-messages', 'Acesso administrativo autorizado!');
+                    const { success } = await db.store('appointments', newAppointment);
+
+                    if (success) {
+                        ui.showMessage('schedule-message', 'Agendamento confirmado!', 'success');
+                        mail.sendAppointment(form);
+                        appState.appointments.push(newAppointment);
+                        ui.updateAppointmentsList(appState.appointments);
                         setTimeout(() => {
-                            closeModal('adminLoginModal');
-                            toggleAdminPanel();
-                        }, 1500);
+                            form.reset();
+                            document.getElementById('appointments-list-container').classList.remove('hidden');
+                            document.getElementById('schedule-form-container').classList.add('hidden');
+                        }, 2000);
                     } else {
-                        showMessage('admin-login-messages', 'Credenciais inválidas!', 'error');
+                        ui.showMessage('schedule-message', 'Erro ao agendar. Tente novamente.', 'error');
                     }
                 });
-            }
 
-            // Schedule form
-            const scheduleForm = document.getElementById('schedule-form');
-            if (scheduleForm) {
-                scheduleForm.addEventListener('submit', async function(e) {
+                document.getElementById('contact-form').addEventListener('submit', async (e) => {
                     e.preventDefault();
-                    const button = e.target.querySelector('button[type="submit"]');
-                    showLoading(button);
-                    
-                    const formData = new FormData(e.target);
-                    const appointmentData = {
-                        service: formData.get('service'),
-                        vehicle: formData.get('vehicle'),
-                        date: formData.get('date'),
-                        time: formData.get('time'),
-                        notes: formData.get('notes')
-                    };
-                    
-                    const result = await createAppointment(appointmentData);
-                    
-                    showLoading(button, false);
-                    
-                    if (result.success) {
-                        document.getElementById('success-message').textContent = result.message;
-                        closeModal('scheduleModal');
-                        openModal('successModal');
-                        scheduleForm.reset();
-                    } else {
-                        showMessage('schedule-messages', result.message, 'error');
-                    }
-                });
-            }
-
-            // Contact form
-            const contactForm = document.getElementById('contact-form');
-            if (contactForm) {
-                contactForm.addEventListener('submit', async function(e) {
-                    e.preventDefault();
-                    const button = e.target.querySelector('button[type="submit"]');
-                    showLoading(button);
-                    
-                    const formData = new FormData(e.target);
+                    const form = e.target;
                     const contactData = {
-                        name: formData.get('name'),
-                        email: formData.get('email'),
-                        message: formData.get('message')
+                        name: form.elements['user_name'].value,
+                        email: form.elements['user_email'].value,
+                        message: form.elements['message'].value
                     };
-                    
-                    const result = await saveContact(contactData);
-                    
-                    showLoading(button, false);
-                    
-                    if (result.success) {
-                        showMessage('contact-messages', result.message);
-                        contactForm.reset();
+
+                    const { success } = await db.store('contacts', contactData);
+                    if (success) {
+                        ui.showMessage('contact-message', 'Sua mensagem foi enviada com sucesso!', 'success');
+                        mail.sendContact(form);
+                        setTimeout(() => form.reset(), 2000);
                     } else {
-                        showMessage('contact-messages', result.message, 'error');
+                        ui.showMessage('contact-message', 'Erro ao enviar mensagem. Tente novamente.', 'error');
                     }
                 });
-            }
 
-            // Set minimum date for appointments
-            const scheduleDate = document.getElementById('schedule-date');
-            if (scheduleDate) {
-                const today = new Date().toISOString().split('T')[0];
-                scheduleDate.min = today;
-            }
+                // Funções de debug
+                return {
+                    // Teste para Supabase
+                    testSupabase: async function() {
+                        console.log('🧪 Testando Supabase...');
+                        const testUser = {
+                            name: 'Usuário Teste',
+                            email: 'teste@supabase.com',
+                            phone: '11999999999',
+                            password: btoa('senha123'),
+                            role: 'user'
+                        };
+                        
+                        const result = await db.store('users', testUser);
+                        console.log('Resultado:', result);
+                        return result;
+                    },
+                    
+                    // Status
+                    getSystemStatus: function() {
+                        const status = {
+                            supabaseEnabled: isSupabaseEnabled,
+                            emailJSConfigured: !!EMAILJS_CONFIG.serviceID,
+                            userLoggedIn: appState.isLoggedIn,
+                            isAdmin: appState.isAdmin,
+                            appointmentsCount: appState.appointments.length
+                        };
+                        console.log('📊 Status:', status);
+                        return status;
+                    },
+                    
+                    // Limpar dados
+                    clearTestData: function() {
+                        localStorage.removeItem('lbrothers_users');
+                        localStorage.removeItem('lbrothers_appointments');
+                        localStorage.removeItem('lbrothers_contacts');
+                        console.log('🧹 Dados limpos');
+                    }
+                };
+            })();
+
+            console.log('✅ Sistema L\' Brothers carregado!');
         });
-
-        // ========================================
-        // SISTEMA DE TESTES GLOBAL
-        // ========================================
-        
-        window.lbrothersSystem = {
-            // Teste EmailJS
-            testEmailJS: async function() {
-                const testData = {
-                    user_name: 'Cliente Teste',
-                    service: 'lavagem-premium',
-                    vehicle: 'Honda Civic 2020',
-                    date: '2025-01-20',
-                    time: '14:00',
-                    notes: 'Teste do sistema EmailJS'
-                };
-                
-                console.log('🧪 Testando EmailJS...');
-                const result = await sendConfirmationEmail(testData, 'henriquepaulistano2019@gmail.com');
-                console.log('Resultado:', result);
-                return result;
-            },
-            
-            // Teste Supabase
-            testSupabase: async function() {
-                console.log('🧪 Testando Supabase...');
-                const testUser = {
-                    name: 'Usuário Teste',
-                    email: 'teste@supabase.com',
-                    phone: '11999999999',
-                    password: btoa('senha123'),
-                    role: 'user'
-                };
-                
-                const result = await db.store('users', testUser);
-                console.log('Resultado:', result);
-                return result;
-            },
-            
-            // Status
-            getSystemStatus: function() {
-                const status = {
-                    supabaseEnabled: isSupabaseEnabled,
-                    emailJSConfigured: !!EMAILJS_CONFIG.serviceID,
-                    userLoggedIn: isLoggedIn(),
-                    isAdmin: appState.isAdmin,
-                    appointmentsCount: appState.appointments.length
-                };
-                console.log('📊 Status:', status);
-                return status;
-            },
-            
-            // Limpar dados
-            clearTestData: function() {
-                localStorage.removeItem('lbrothers_users');
-                localStorage.removeItem('lbrothers_appointments');
-                localStorage.removeItem('lbrothers_contacts');
-                console.log('🧹 Dados limpos');
-            }
-        };
-
-        console.log('✅ Sistema L\' Brothers carregado!');
     </script>
 </body>
 </html>
